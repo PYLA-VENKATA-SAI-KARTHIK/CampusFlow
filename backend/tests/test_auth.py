@@ -12,7 +12,7 @@ from app.models.user import User
 @pytest.fixture
 async def active_user(db_session: AsyncSession) -> User:
     user = User(
-        email="student@campusflow.test",
+        email="student@campusflow.com",
         password_hash=hash_password("password123"),
         role="STUDENT",
         full_name="Test Student",
@@ -27,7 +27,7 @@ async def active_user(db_session: AsyncSession) -> User:
 @pytest.fixture
 async def inactive_user(db_session: AsyncSession) -> User:
     user = User(
-        email="inactive@campusflow.test",
+        email="inactive@campusflow.com",
         password_hash=hash_password("dummy"),
         role="STUDENT",
         full_name="Inactive Student",
@@ -45,7 +45,7 @@ async def test_login_success(async_client: AsyncClient, active_user: User):
         "/api/v1/auth/login",
         json={"email": active_user.email, "password": "password123"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     data = response.json()
     assert "access_token" in data
     assert "refresh_token" in data
