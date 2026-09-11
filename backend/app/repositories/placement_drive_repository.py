@@ -44,7 +44,10 @@ class PlacementDriveRepository:
 
         stmt = (
             select(PlacementDrive)
-            .options(selectinload(PlacementDrive.company))
+            .options(
+                selectinload(PlacementDrive.company),
+                selectinload(PlacementDrive.eligibility_criteria),
+            )
             .order_by(PlacementDrive.created_at.desc())
         )
         
