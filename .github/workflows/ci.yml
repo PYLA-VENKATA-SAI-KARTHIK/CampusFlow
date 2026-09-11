@@ -144,7 +144,7 @@ jobs:
 
       - name: Verify Backend Non-Root User
         run: |
-          USER_ID=$(docker run --rm campusflow-backend:ci id -u)
+          USER_ID=$(docker run --rm --entrypoint="" campusflow-backend:ci id -u)
           echo "Backend Container Runtime User ID: $USER_ID"
           if [ "$USER_ID" -ne 10001 ]; then
             echo "Security check failed: Backend must run as non-root UID 10001"
