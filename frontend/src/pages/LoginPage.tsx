@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useForm } from 'react-form';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '../services/apiClient';
-import { useForm as useReactHookForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -23,7 +22,7 @@ export const LoginPage = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useReactHookForm<LoginFormValues>({
+  } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 

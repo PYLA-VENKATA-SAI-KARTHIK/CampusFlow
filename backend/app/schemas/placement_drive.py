@@ -77,6 +77,10 @@ class EligibilityResult(BaseModel):
     reasons: list[str]
 
 
+class EligibilityCheckResponse(EligibilityResult):
+    drive_id: UUID
+
+
 class PlacementDriveResponse(PlacementDriveBase):
     id: UUID
     company_id: UUID

@@ -27,6 +27,8 @@ from app.core.exceptions import (
 )
 from app.core.security import get_jwt_manager
 from app.db.session import get_db_session
+from app.core.config import get_settings
+from app.services.storage_service import StorageService, create_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -133,3 +135,16 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
     """Yield an async database session for a single request."""
     async for session in get_db_session():
         yield session
+
+
+# ---------------------------------------------------------------------------
+# Storage Service dependency
+# ---------------------------------------------------------------------------
+
+
+def get_storage_service() -> StorageService:
+    settings = get_settings()
+    return create_storage_service(
+        provider=settings.storage_provider,
+        bucket_name=settings.gcs_bucket_name,
+    )

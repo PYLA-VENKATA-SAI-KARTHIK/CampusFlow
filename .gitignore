@@ -20,16 +20,18 @@ pip-delete-this-directory.txt
 
 # Environment & secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.pem
 *.key
 *_rsa
 *_rsa.pub
-*private*
-*secret*
 *.p12
 *.pfx
+credentials/
+secrets/
+*service-account*.json
+*service_account*.json
 
 # IDE
 .vscode/

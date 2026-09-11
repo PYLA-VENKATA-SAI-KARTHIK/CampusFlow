@@ -54,3 +54,5 @@ class PlacementDrive(Base):
     eligibility_criteria = relationship(
         "EligibilityCriteria", back_populates="drive", uselist=False
     )
+    registrations = relationship("DriveRegistration", back_populates="drive")
+    stages = relationship("PlacementStage", back_populates="drive", cascade="all, delete-orphan")

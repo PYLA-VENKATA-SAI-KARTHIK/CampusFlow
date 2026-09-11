@@ -60,3 +60,43 @@ class PlacementDriveRepository:
         
     def add_criteria(self, criteria: EligibilityCriteria) -> None:
         self.session.add(criteria)
+
+    async def count_stages(self, drive_id: UUID) -> int:
+        """Return the number of placement stages that exist for the given drive."""
+        from app.models.placement_stage import PlacementStage
+        stmt = select(func.count(PlacementStage.id)).where(PlacementStage.drive_id == drive_id)
+        return await self.session.scalar(stmt) or 0
+
+    async def get_open_drives_with_deadline(self) -> Sequence[PlacementDrive]:
+        """Fetch all placement drives in REGISTRATION_OPEN status with a non-null deadline."""
+        stmt = (
+            select(PlacementDrive)
+            .options(
+                selectinload(PlacementDrive.company),
+                selectinload(PlacementDrive.eligibility_criteria),
+            )
+            .where(
+                PlacementDrive.status == "REGISTRATION_OPEN",
+                PlacementDrive.registration_deadline.is_not(None),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_expired_open_drives(self, now: datetime) -> Sequence[PlacementDrive]:
+        """Fetch all placement drives in REGISTRATION_OPEN status whose deadline has passed."""
+        stmt = (
+            select(PlacementDrive)
+            .options(
+                selectinload(PlacementDrive.company),
+                selectinload(PlacementDrive.eligibility_criteria),
+            )
+            .where(
+                PlacementDrive.status == "REGISTRATION_OPEN",
+                PlacementDrive.registration_deadline.is_not(None),
+                PlacementDrive.registration_deadline < now,
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+

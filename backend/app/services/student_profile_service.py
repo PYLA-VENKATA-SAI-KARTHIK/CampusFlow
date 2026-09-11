@@ -85,9 +85,22 @@ class StudentProfileService:
             "active_backlogs": profile.active_backlogs,
         }
 
-        update_data = data.model_dump(exclude_unset=True)
+        if data.model_extra:
+            forbidden_fields = {
+                "roll_number", "branch_code", "batch_year", "cgpa", 
+                "active_backlogs", "resume_gcs_path", "resume_uploaded_at"
+            }
+            if any(k in forbidden_fields for k in data.model_extra):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cannot modify protected academic or system fields."
+                )
+
+        # Only update fields explicitly defined in the schema (which excludes model_extra)
+        update_data = data.model_dump(exclude_unset=True, exclude_none=False)
         for key, value in update_data.items():
-            setattr(profile, key, value)
+            if hasattr(profile, key):
+                setattr(profile, key, value)
 
         new_state = {
             "cgpa": float(profile.cgpa) if profile.cgpa else None,
@@ -107,6 +120,19 @@ class StudentProfileService:
         return await self.get_profile_by_user_id(user_id)
 
     async def list_students(
-        self, skip: int = 0, limit: int = 20, branch_code: str | None = None
+        self, 
+        skip: int = 0, 
+        limit: int = 20, 
+        branch_code: str | None = None,
+        batch_year: int | None = None,
+        min_cgpa: float | None = None,
+        search: str | None = None
     ) -> tuple[Sequence[StudentProfile], int]:
-        return await self.profile_repo.list_students(skip=skip, limit=limit, branch_code=branch_code)
+        return await self.profile_repo.list_students(
+            skip=skip, 
+            limit=limit, 
+            branch_code=branch_code,
+            batch_year=batch_year,
+            min_cgpa=min_cgpa,
+            search=search
+        )

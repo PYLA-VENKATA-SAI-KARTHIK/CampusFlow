@@ -43,29 +43,62 @@ class StudentProfileRepository:
         return result.scalar_one_or_none()
 
     async def list_students(
-        self, skip: int = 0, limit: int = 20, branch_code: str | None = None
+        self, 
+        skip: int = 0, 
+        limit: int = 20, 
+        branch_code: str | None = None,
+        batch_year: int | None = None,
+        min_cgpa: float | None = None,
+        search: str | None = None
     ) -> tuple[Sequence[StudentProfile], int]:
-        count_stmt = select(func.count(StudentProfile.id))
-        if branch_code:
-            count_stmt = count_stmt.where(StudentProfile.branch_code == branch_code)
+        
+        base_stmt = select(StudentProfile).join(User, StudentProfile.user_id == User.id)
 
+        if branch_code:
+            base_stmt = base_stmt.where(StudentProfile.branch_code == branch_code)
+        if batch_year:
+            base_stmt = base_stmt.where(StudentProfile.batch_year == batch_year)
+        if min_cgpa is not None:
+            base_stmt = base_stmt.where(StudentProfile.cgpa >= min_cgpa)
+        if search:
+            search_term = f"%{search}%"
+            base_stmt = base_stmt.where(
+                (StudentProfile.roll_number.ilike(search_term)) |
+                (User.full_name.ilike(search_term)) |
+                (User.email.ilike(search_term))
+            )
+
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
         total = await self.session.scalar(count_stmt) or 0
 
         stmt = (
-            select(StudentProfile)
+            base_stmt
             .options(
                 selectinload(StudentProfile.user),
                 selectinload(StudentProfile.branch)
             )
             .order_by(StudentProfile.created_at.desc())
+            .offset(skip)
+            .limit(limit)
         )
         
-        if branch_code:
-            stmt = stmt.where(StudentProfile.branch_code == branch_code)
-
-        stmt = stmt.offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return result.scalars().all(), total
 
+    async def list_all_active_profiles(self) -> Sequence[StudentProfile]:
+        """Fetch all student profiles belonging to active users."""
+        stmt = (
+            select(StudentProfile)
+            .join(User, StudentProfile.user_id == User.id)
+            .where(User.is_active == True)  # noqa: E712
+            .options(
+                selectinload(StudentProfile.user),
+                selectinload(StudentProfile.branch),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
     def add(self, profile: StudentProfile) -> None:
         self.session.add(profile)
+

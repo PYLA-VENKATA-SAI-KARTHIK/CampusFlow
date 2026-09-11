@@ -1,0 +1,105 @@
+# ==============================================================================
+# CampusFlow — Local Multi-Service Environment (Docker Compose)
+# LOCAL DEVELOPMENT AND TEST PURPOSES ONLY.
+# NOT A PRODUCTION ARCHITECTURE.
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: campusflow-postgres
+    environment:
+      POSTGRES_USER: campusflow
+      POSTGRES_PASSWORD: campusflow_dev
+      POSTGRES_DB: campusflow_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusflow -d campusflow_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - campusflow-network
+
+  # ----------------------------------------------------------------------------
+  # 2. FastAPI Backend Service (Uvicorn / Python 3.13)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campusflow-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://campusflow:campusflow_dev@postgres:5432/campusflow_dev
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:8080
+      INTERNAL_SERVICE_URL: http://backend:8000
+      INTERNAL_TASK_AUTH_SECRET: campusflow-internal-tasks-secret-dev
+      STORAGE_PROVIDER: mock
+      NOTIFICATION_TASK_PROVIDER: mock
+      PUSH_PROVIDER: mock
+      EMAIL_PROVIDER: mock
+      RUN_MIGRATIONS: "true"
+      JWT_KEY_ID: campusflow-dev-key-v1
+      JWT_PRIVATE_KEY_BASE64: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb2dJQkFBS0NBUUVBdXluNjlDQzZJbkxBVTVZTUs0aUQxdjFDY2FZRENzZGpqeWxRRVFrMkxWc0p4S2lCczlLcXc2QllNelc4MUJXbWlhN1ZzRFNhVXZYRmtTRFVmVGFjS0FSSDVOWjlFV0JNekhBMGVTNmRudHlvZGVZeTRGdkVFRk4rcG14QnpFMTZJVmZrUWpTV1dFTndpWkV4VVFDR3p2YlJmSHdObFB1N2gvWmRheDFUV0JYTzhWUE1zZ2VndEIveE9SaFFKTmFoVTdwSmdoQTJIeXZvekMwYmxrVFc4MTNtbXJhTitaNDU2eXFQSzd4bE5YRVhjUHh0UDBycVYzWWJmMFd6MURONndxSFRsL1lJR0RwMkRCNUN5Znh1RHRpYkZ2YU9LbWVhcUZ4cE45WnI5Wnc0Wm5wdmU2WC9MRE4rcmVWRlFsdjMrY1VJck02dlF6N2VKcE9tcDU0VzcKV3dJREFRQUJBb0lCQUFVdEhZd241WTN6VjM5WXBUSURkdHl1NGVHQjFRMnRHWlduOXJnR3luQVY0R1phUFJIc0pMZ0RZQytocXFZekNCb2VUUnNTblI4ZFlsYnkwClNEd29TUHhRVmY2elAyd2lKODAwVGF5dzlnemFSTk5xUVdNZENreGJmVERWTFNHUmdUckRkeUk0TW1USCtjbUJWTVV1S0tXSHJMYUJKYzBEZzBXNDJpdmd0VC9mNWtIMDV0NTFBNkVxb3BmZVdkS2RteWloZWtLN2tHdExTNXVVUgpPK2o5bTFldVdzVHRLTFh2cklDaUNGQm9oYU1Pd0RucnNLTUZZbkpZdTZ3NzNPVWRiZkhSMlBsUE0vNnlyMElsL0pnRzlLeDQyMHVuV3lWTVd1eXBRa1JEckNJejByUDRnZzZib01pTFp4dmd1S0tVM3NpNGk0V2p1Ykx6S2ZFL01PQ3B0N2tDZ1lFQTdHZlk2cG4yOUtEYkFwblhJVERqZFc1S2s5UEo0aUk1RWlLSVMrOVp4STJ0a3lBZnBRRTVBbWxjRjBXQXEzWFdLbUFzMC9NclNmbE9KMzB5LzIxYWxsVzFackVpSzdvdDFXd3FvMFZMS2xLUmhVNWtXM3VNZEFLcDI3Y2tvSi9NeFlEbWl1bEtkZXgyc2NtdFpxMU9ZZCtkakN1V0tKN2NHdGFHcnFkWXc3TUNnWUVBeXExTmpQcmRsTllEVmFyb01xOVRjcWR5K2doLzI3TWpuUkNPY0tQNXVZbFQ5U1Z1SmppNnJhZkJMVWVaREx6dFhBcmVsZ3N6U0VIVzFrYmZ3amJmeG95dnRSYlJwb0lhTzdndFl6RWUyZHUwVzQwckovYlhDWTBhcHY2UEtpazJVem9qZmhNSnRFeUZqaGRWNUVBQ1U5RVZwbzFhYWRWYUpENXRObk9TOWJrQ2dZQkhITTN4ZE1IVDBQU09uaXVNVWlhMEZYNXRNdHFXK1BmQXFoQlAxU2ZmWWJURlB5djQvaEVNM0ZTUnNQM3o5Q0dtcnVoWGlxTmJBTUllZTdYU3d2TzRTVmFLTHFBc05hTXRxYjB5aWxjSjg1Q2JWeGU4SUZGZkcrZmFraTE0YTlsckorVXhzQStIL1lPTzQzM1h2eFl1Cjl0Y3JqUWowV3lVV3BhV0o4Q2tSWlFLQmdFQkNvR01CcXoya2VWd3hHdnZ2QU90S1VqY2FlTWVFemRiZngvbkkwOFhTMTg3VE5sQmlEallvQ1EyOU5MYUlORTNKbUhERVJjY3lJTmJCaS9KMWNaQmZUTnFDeUtnZGVnbnRSSGk5dTBWaDFwWnNkUEZ2M3hCRkw5MGd1dTJvTVhSRDY3cnVlRlkxS09jN1dOd0pWQitWSEdNNkd3eFY2QVd6eHpGcmhYM3BBb0dBRWJhSHdVYktPTUZKYlorN1VNU2VHNUI5UkJVQy8wRnlYeC9Wc2hrdWJpTTZ1YjdQZHFCUVk1b2lyNTJZVENOazNOQitFMm91MXlCN1RVMm5IR2tPbmwyOU5JdHJYQmt1WHZYd0phUE5lTXNDMGwrMkFPbjZHNm04RVFYeUc5Smk4WEpoZ2hkZWNHeDZtd2hPa0ZNdUdOSnBEOVpqK2UyS0ZnQ2V6Mm5OVHpJPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
+      JWT_PUBLIC_KEY_BASE64: LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1eW42OUNDNkluTEFVNVlNSzRpRAoxdjFDY2FZRENzZGpqeWxRRVFrMkxWc0p4S2lCczlLcXc2QllNelc4MUJXbWlhN1ZzRFNhVXZYRmtTRFVmVGFjCktBUkg1WjlFV0JNekhBMGVTNmRudHlvZGVZeTRGdkVFRk4rcG14QnpFMTZJVmZrUWpTV1dFTndpWkV4VVFDR3oKdmJSZkh3TmxQdTdoL1poYXgxVFdCWEw4VlBNc2dlZ3RCL3hPUmhRSk5haFU3cEpnaEEySHl2b3pDMGJsa1RXOAoxM21tcmFOK1o0NTZ5cVBLN3hsTlhFWGNQeHRQMHJxVjNZYmYwV3oxRE56d3FIVGwvWUlHRHAyREI1Q3lmeHVECnRpYkZ2YU9LbWVhcUZ4cE45WnI5Wnc0Wm5wdmU2WC9MRE4rcmVWRlFsdjMrY1VJck02dlF6N2VKcE9tcDU0VzcKV3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - campusflow-network
+
+  # ----------------------------------------------------------------------------
+  # 3. React Frontend Service (Nginx / Non-Root)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    container_name: campusflow-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - campusflow-network
+
+# ------------------------------------------------------------------------------
+# Volumes & Networks
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  campusflow-network:
+    driver: bridge

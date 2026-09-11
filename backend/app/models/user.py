@@ -37,3 +37,5 @@ class User(Base):
     student_profile = relationship("StudentProfile", back_populates="user", uselist=False)
     account_activation = relationship("AccountActivation", back_populates="user", uselist=False)
     refresh_tokens = relationship("RefreshToken", back_populates="user")
+    drive_registrations = relationship("DriveRegistration", back_populates="student")
+    push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")

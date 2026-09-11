@@ -90,6 +90,34 @@ class Settings(BaseSettings):
     bootstrap_admin_name: str = ""
 
     # -------------------------------------------------------------------------
+    # Storage (GCS / Mock)
+    # -------------------------------------------------------------------------
+    storage_provider: Literal["mock", "gcs"] = "mock"
+    gcs_bucket_name: str = "campusflow-resumes"
+    resume_max_size_bytes: int = 5 * 1024 * 1024  # 5 MB
+    resume_url_expires_in: int = 900  # 15 mins
+
+    # -------------------------------------------------------------------------
+    # Cloud Tasks / Async Notifications (Phase 3)
+    # -------------------------------------------------------------------------
+    notification_task_provider: Literal["mock", "cloud_tasks"] = "mock"
+    cloud_tasks_project_id: str = ""
+    cloud_tasks_location: str = "asia-south1"
+    cloud_tasks_queue_name: str = "campusflow-notifications"
+    cloud_tasks_service_account_email: str = ""
+    internal_service_url: str = "http://localhost:8000"
+    internal_task_auth_secret: str = "campusflow-internal-tasks-secret-dev"
+
+    # -------------------------------------------------------------------------
+    # Web Push / VAPID (Phase 3.4)
+    # -------------------------------------------------------------------------
+    push_provider: Literal["mock", "webpush"] = "mock"
+    vapid_public_key: str = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5NPHI84"
+    vapid_private_key: str = "campusflow-dev-vapid-private-key"
+    vapid_subject: str = "mailto:admin@campusflow.college"
+
+
+    # -------------------------------------------------------------------------
     # Validators
     # -------------------------------------------------------------------------
     @field_validator("log_level")

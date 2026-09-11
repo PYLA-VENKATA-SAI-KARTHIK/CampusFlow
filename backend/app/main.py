@@ -10,12 +10,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from app.api.internal.scheduler import router as internal_scheduler_router
+from app.api.internal.tasks import router as internal_tasks_router
 from app.api.router import api_v1_router
 from app.api.wellknown import router as wellknown_router
 from app.core.config import get_settings
 from app.core.exceptions import CampusFlowError, campus_flow_exception_handler, generic_exception_handler
+from app.core.limiter import limiter
 from app.core.logging_config import configure_logging, get_logger
 from app.core.security import init_jwt_manager
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.db.session import close_db_engine, get_engine
 
 
@@ -54,6 +58,15 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # SlowAPI Rate Limiter
+    app.state.limiter = limiter
+
+    # Security Headers Middleware
+    app.add_middleware(
+        SecurityHeadersMiddleware,
+        is_production=settings.app_env.lower() in ("production", "staging"),
+    )
+
     # CORS configuration
     app.add_middleware(
         CORSMiddleware,
@@ -71,8 +84,11 @@ def create_app() -> FastAPI:
     # Routers
     app.include_router(wellknown_router, prefix="/.well-known")
     app.include_router(api_v1_router, prefix="/api/v1")
+    app.include_router(internal_tasks_router, prefix="/internal/tasks", tags=["Internal Tasks"])
+    app.include_router(internal_scheduler_router, prefix="/internal/scheduler", tags=["Internal Scheduler"])
 
     return app
+
 
 
 app = create_app()

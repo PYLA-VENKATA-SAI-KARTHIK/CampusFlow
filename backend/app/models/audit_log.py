@@ -38,3 +38,34 @@ class AuditLog(Base):
 
     # Relationships
     performed_by = relationship("User")
+
+
+# Immutability trigger: prevent UPDATE and DELETE on audit_logs
+from sqlalchemy import DDL, event
+
+_audit_logs_func_ddl = DDL("""
+CREATE OR REPLACE FUNCTION audit_logs_immutable()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'audit_logs table is immutable — updates and deletes are not permitted';
+END;
+$$ LANGUAGE plpgsql;
+""")
+
+_audit_logs_trigger_ddl = DDL("""
+CREATE OR REPLACE TRIGGER audit_logs_no_update_or_delete
+    BEFORE UPDATE OR DELETE ON audit_logs
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_logs_immutable();
+""")
+
+event.listen(
+    AuditLog.__table__,
+    "after_create",
+    _audit_logs_func_ddl.execute_if(dialect="postgresql"),
+)
+event.listen(
+    AuditLog.__table__,
+    "after_create",
+    _audit_logs_trigger_ddl.execute_if(dialect="postgresql"),
+)

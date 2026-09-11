@@ -10,22 +10,74 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import UserContext, get_current_user, get_db, require_role
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.placement_drive_repository import PlacementDriveRepository
+from app.repositories.student_profile_repository import StudentProfileRepository
 from app.schemas.common import PaginatedResponse
+from app.schemas.manual_broadcast import ManualBroadcastRequest, ManualBroadcastResponse
 from app.schemas.placement_drive import (
+    EligibilityCheckResponse,
     PlacementDriveCreate,
     PlacementDriveResponse,
     PlacementDriveStatusUpdate,
     PlacementDriveUpdate,
 )
+from app.schemas.placement_stage import (
+    PlacementStageCreate,
+    PlacementStageResponse,
+    PlacementStageUpdate,
+)
+from app.schemas.student_profile import StudentProfileResponse
 from app.services.placement_drive_service import PlacementDriveService
+from app.services.placement_stage_service import PlacementStageService
+from app.services.registration_service import RegistrationService
+from app.repositories.drive_registration_repository import DriveRegistrationRepository
+from app.repositories.placement_stage_repository import PlacementStageRepository
+from app.repositories.stage_assignment_repository import StageAssignmentRepository
+from app.repositories.notification_repository import NotificationRepository
+from app.repositories.analytics_repository import AnalyticsRepository
+from app.schemas.analytics import DriveAnalyticsResponse
+from app.schemas.drive_registration import DriveRegistrationResponse, DriveRegistrationWithStudentResponse
+from app.schemas.stage_assignment import StageShortlistRequest, StageAssignmentUpdate, StageAssignmentResponse
+from app.services.analytics_service import AnalyticsService
+
+from app.services.notification_dispatcher import NotificationDispatcher, get_notification_dispatcher
 
 router = APIRouter()
 
 
-def get_drive_service(session: AsyncSession = Depends(get_db)) -> PlacementDriveService:
+def get_drive_service(
+    session: AsyncSession = Depends(get_db),
+    dispatcher: NotificationDispatcher = Depends(get_notification_dispatcher),
+) -> PlacementDriveService:
     drive_repo = PlacementDriveRepository(session)
     audit_repo = AuditLogRepository(session)
-    return PlacementDriveService(drive_repo, audit_repo)
+    student_repo = StudentProfileRepository(session)
+    return PlacementDriveService(drive_repo, audit_repo, student_repo, dispatcher=dispatcher)
+
+
+def get_registration_service(
+    session: AsyncSession = Depends(get_db),
+    dispatcher: NotificationDispatcher = Depends(get_notification_dispatcher),
+) -> RegistrationService:
+    reg_repo = DriveRegistrationRepository(session)
+    audit_repo = AuditLogRepository(session)
+    drive_repo = PlacementDriveRepository(session)
+    student_repo = StudentProfileRepository(session)
+    assignment_repo = StageAssignmentRepository(session)
+    drive_service = PlacementDriveService(drive_repo, audit_repo, student_repo, dispatcher=dispatcher)
+    return RegistrationService(reg_repo, audit_repo, drive_repo, student_repo, drive_service, assignment_repo, dispatcher=dispatcher)
+
+
+def get_stage_service(
+    session: AsyncSession = Depends(get_db),
+    dispatcher: NotificationDispatcher = Depends(get_notification_dispatcher),
+) -> PlacementStageService:
+    stage_repo = PlacementStageRepository(session)
+    assignment_repo = StageAssignmentRepository(session)
+    drive_repo = PlacementDriveRepository(session)
+    audit_repo = AuditLogRepository(session)
+    reg_repo = DriveRegistrationRepository(session)
+    return PlacementStageService(stage_repo, assignment_repo, drive_repo, audit_repo, reg_repo, dispatcher=dispatcher)
+
 
 
 @router.post("", response_model=PlacementDriveResponse, status_code=201)
@@ -67,7 +119,8 @@ async def get_drive(
     service: Annotated[PlacementDriveService, Depends(get_drive_service)],
 ) -> PlacementDriveResponse:
     """Get drive details."""
-    drive = await service.get_drive(drive_id)
+    is_student = current_user.role == "STUDENT"
+    drive = await service.get_drive(drive_id, current_user.user_id, is_student)
     return drive
 
 
@@ -91,3 +144,183 @@ async def update_drive_status(
 ) -> PlacementDriveResponse:
     """Advance drive lifecycle status."""
     return await service.update_drive_status(drive_id, data, current_user.user_id)
+
+
+@router.get("/{drive_id}/eligibility-check", response_model=EligibilityCheckResponse)
+async def check_eligibility(
+    drive_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("STUDENT"))],
+    service: Annotated[PlacementDriveService, Depends(get_drive_service)],
+) -> EligibilityCheckResponse:
+    """Check eligibility of authenticated student for a drive."""
+    result = await service.check_eligibility(drive_id, current_user.user_id)
+    return EligibilityCheckResponse(
+        drive_id=drive_id,
+        is_eligible=result.is_eligible,
+        reasons=result.reasons
+    )
+
+
+@router.get("/{drive_id}/eligible-students", response_model=PaginatedResponse[StudentProfileResponse])
+async def list_eligible_students(
+    drive_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementDriveService, Depends(get_drive_service)],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> PaginatedResponse[StudentProfileResponse]:
+    """List students eligible for a drive."""
+    skip = (page - 1) * page_size
+    students, total = await service.list_eligible_students(drive_id, skip=skip, limit=page_size)
+    
+    return PaginatedResponse(
+        items=list(students),
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_next=(skip + page_size) < total
+    )
+
+
+@router.post("/{drive_id}/register", response_model=DriveRegistrationResponse, status_code=201)
+async def register_student(
+    drive_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("STUDENT"))],
+    service: Annotated[RegistrationService, Depends(get_registration_service)],
+) -> DriveRegistrationResponse:
+    """Register the authenticated student for a drive."""
+    return await service.register_student(drive_id, current_user.user_id)
+
+
+@router.get("/{drive_id}/registrations", response_model=PaginatedResponse[DriveRegistrationWithStudentResponse])
+async def list_registrations(
+    drive_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[RegistrationService, Depends(get_registration_service)],
+    status: str | None = None,
+    branch: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> PaginatedResponse[DriveRegistrationWithStudentResponse]:
+    """List registrations for a drive."""
+    skip = (page - 1) * page_size
+    registrations, total = await service.list_drive_registrations(drive_id, skip=skip, limit=page_size, status=status, branch=branch)
+    
+    return PaginatedResponse(
+        items=list(registrations),
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_next=(skip + page_size) < total
+    )
+@router.post("/{drive_id}/stages", response_model=PlacementStageResponse, status_code=201)
+async def create_stage(
+    drive_id: UUID,
+    data: PlacementStageCreate,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> PlacementStageResponse:
+    """Create a placement stage."""
+    return await service.create_stage(drive_id, data, current_user.user_id)
+
+
+@router.get("/{drive_id}/stages", response_model=list[PlacementStageResponse])
+async def list_stages(
+    drive_id: UUID,
+    current_user: Annotated[UserContext, Depends(get_current_user)],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> list[PlacementStageResponse]:
+    """List stages for a drive. Students only see published stages they are assigned to."""
+    is_student = current_user.role == "STUDENT"
+    return list(await service.list_stages(drive_id, current_user.user_id, is_student))
+
+
+@router.patch("/{drive_id}/stages/{stage_id}", response_model=PlacementStageResponse)
+async def update_stage(
+    drive_id: UUID,
+    stage_id: UUID,
+    data: PlacementStageUpdate,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> PlacementStageResponse:
+    """Update a stage."""
+    return await service.update_stage(drive_id, stage_id, data, current_user.user_id)
+
+
+@router.post("/{drive_id}/stages/{stage_id}/publish", response_model=dict)
+async def publish_stage(
+    drive_id: UUID,
+    stage_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> dict:
+    """Publish a stage."""
+    return await service.publish_stage(drive_id, stage_id, current_user.user_id)
+
+
+@router.post("/{drive_id}/stages/{stage_id}/shortlist", response_model=dict, status_code=201)
+async def shortlist_students(
+    drive_id: UUID,
+    stage_id: UUID,
+    data: StageShortlistRequest,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> dict:
+    """Shortlist students for a stage."""
+    return await service.shortlist_students(drive_id, stage_id, data, current_user.user_id)
+
+
+@router.patch("/{drive_id}/stages/{stage_id}/assignments/{student_id}", response_model=StageAssignmentResponse)
+async def update_stage_assignment(
+    drive_id: UUID,
+    stage_id: UUID,
+    student_id: UUID,
+    data: StageAssignmentUpdate,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> StageAssignmentResponse:
+    """Update a student's stage assignment result/status."""
+    return await service.update_assignment(drive_id, stage_id, student_id, data, current_user.user_id)
+
+
+@router.post("/{drive_id}/stages/{stage_id}/publish-results", response_model=dict)
+async def publish_results(
+    drive_id: UUID,
+    stage_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> dict:
+    """Publish results for a stage, notifying all assigned students."""
+    return await service.publish_results(drive_id, stage_id, current_user.user_id)
+
+
+@router.post("/{drive_id}/notify", response_model=ManualBroadcastResponse, status_code=202)
+async def broadcast_drive_notification(
+    drive_id: UUID,
+    data: ManualBroadcastRequest,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementDriveService, Depends(get_drive_service)],
+) -> ManualBroadcastResponse:
+    """Broadcast a manual notification to selected audience for a drive."""
+    return await service.broadcast_notification(drive_id, data, current_user.user_id)
+
+
+def get_analytics_service(
+    session: AsyncSession = Depends(get_db),
+) -> AnalyticsService:
+    analytics_repo = AnalyticsRepository(session)
+    drive_repo = PlacementDriveRepository(session)
+    student_repo = StudentProfileRepository(session)
+    return AnalyticsService(analytics_repo, drive_repo, student_repo)
+
+
+@router.get("/{drive_id}/analytics", response_model=DriveAnalyticsResponse)
+async def get_drive_analytics(
+    drive_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[AnalyticsService, Depends(get_analytics_service)],
+) -> DriveAnalyticsResponse:
+    """Get aggregate recruitment funnel and branch analytics for a placement drive."""
+    return await service.get_drive_analytics(drive_id)
+
+

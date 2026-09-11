@@ -4,6 +4,11 @@ import { AppLayout } from './layouts/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { NotificationCenterPage } from './pages/NotificationCenterPage';
+import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage';
+import { DriveAnalyticsPage } from './pages/DriveAnalyticsPage';
+import { AdminUsersPage } from './pages/AdminUsersPage';
+import { AdminAuditLogsPage } from './pages/AdminAuditLogsPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
@@ -25,7 +30,20 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/notifications" element={<NotificationCenterPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+            {/* Officer & Admin Analytics */}
+            <Route element={<ProtectedRoute allowedRoles={['OFFICER', 'ADMIN']} />}>
+              <Route path="/analytics" element={<AnalyticsDashboardPage />} />
+              <Route path="/drives/:id/analytics" element={<DriveAnalyticsPage />} />
+            </Route>
+
+            {/* Admin Only Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+            </Route>
           </Route>
         </Route>
 

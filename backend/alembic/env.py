@@ -9,7 +9,11 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Add backend directory to sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, backend_dir)
+
+from dotenv import load_dotenv
+load_dotenv(os.path.join(backend_dir, ".env"))
 
 from app.core.config import get_settings
 from app.db.base import Base
@@ -66,9 +70,13 @@ async def run_async_migrations() -> None:
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={"server_settings": {"search_path": "campusflow, public"}},
     )
 
     async with connectable.connect() as connection:
+        from sqlalchemy import text
+        await connection.execute(text("CREATE SCHEMA IF NOT EXISTS campusflow AUTHORIZATION campusflow;"))
+        await connection.commit()
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()

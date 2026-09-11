@@ -26,15 +26,11 @@ class StudentProfileCreate(StudentProfileBase):
 
 
 class StudentProfileUpdate(BaseModel):
-    roll_number: str | None = Field(None, max_length=50)
-    branch_code: str | None = Field(None, max_length=20)
-    batch_year: int | None = Field(None, ge=1900, le=2100)
-    cgpa: float | None = Field(None, ge=0.0, le=10.0)
-    active_backlogs: int | None = Field(None, ge=0)
     phone_number: str | None = Field(None, max_length=15)
     gender: str | None = Field(None, max_length=10)
-    resume_gcs_path: str | None = None
     avatar_gcs_path: str | None = None
+
+    model_config = ConfigDict(extra="allow")
 
 
 class StudentProfileResponse(StudentProfileBase):
@@ -50,3 +46,11 @@ class StudentProfileResponse(StudentProfileBase):
     branch: BranchResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class ResumeUploadUrlResponse(BaseModel):
+    upload_url: str
+    object_path: str
+    expires_in: int
+
+class ResumeConfirmRequest(BaseModel):
+    object_path: str

@@ -4,11 +4,13 @@ Authentication endpoints.
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
+from starlette.requests import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.dependencies import UserContext, get_current_user, get_db
 from app.core.email import EmailService, create_email_service
+from app.core.limiter import limiter
 from app.schemas.auth import (
     ActivateRequest,
     LoginRequest,
@@ -39,12 +41,14 @@ def get_auth_service(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit(get_settings().rate_limit_login)
 async def login(
-    request: LoginRequest,
+    request: Request,
+    data: LoginRequest,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> TokenResponse:
     """Authenticate and receive tokens."""
-    return await auth_service.authenticate(request.email, request.password)
+    return await auth_service.authenticate(data.email, data.password)
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -66,12 +70,14 @@ async def logout(
 
 
 @router.post("/activate", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(get_settings().rate_limit_activate)
 async def activate(
-    request: ActivateRequest,
+    request: Request,
+    data: ActivateRequest,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> None:
     """Activate account using an email token."""
-    await auth_service.activate_account(request.activation_token, request.new_password)
+    await auth_service.activate_account(data.activation_token, data.new_password)
 
 
 @router.get("/me")
