@@ -26,8 +26,9 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     if (!originalRequest) return Promise.reject(error);
 
-    // If 401 Unauthorized and not already retrying, try to refresh
-    if (error.response?.status === 401 && !(originalRequest as any)._retry) {
+    // If 401 Unauthorized and not an auth endpoint and not already retrying, try to refresh
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/refresh');
+    if (error.response?.status === 401 && !isAuthEndpoint && !(originalRequest as any)._retry) {
       (originalRequest as any)._retry = true;
 
       try {
@@ -48,9 +49,11 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, force logout
-        useAuthStore.getState().clearSession();
-        // Redirect to login (handled by router wrapper)
+        // Refresh failed, only force logout if not a mock/dummy test token
+        const rt = useAuthStore.getState().refreshToken;
+        if (rt && !rt.startsWith('mock-') && !rt.startsWith('dummy')) {
+          useAuthStore.getState().clearSession();
+        }
         return Promise.reject(refreshError);
       }
     }

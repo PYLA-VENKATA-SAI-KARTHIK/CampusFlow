@@ -162,6 +162,135 @@ async def test_student_can_update_avatar(async_client: AsyncClient, auth_users: 
     assert response.status_code == 200
     assert response.json()["avatar_gcs_path"] == "avatars/new.png"
 
+# 5a. Student can update section
+@pytest.mark.asyncio
+async def test_student_can_update_section(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    response = await async_client.patch("/api/v1/students/me", headers=auth_users["student"], json={"section": "A"})
+    assert response.status_code == 200
+    assert response.json()["section"] == "A"
+
+# 5a2. Student can update personal email
+@pytest.mark.asyncio
+async def test_student_can_update_personal_email(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    response = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={"personal_email": "student.personal@example.com"}
+    )
+    assert response.status_code == 200
+    assert response.json()["personal_email"] == "student.personal@example.com"
+
+    # Can clear personal email
+    response_clear = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={"personal_email": None}
+    )
+    assert response_clear.status_code == 200
+    assert response_clear.json()["personal_email"] is None
+
+# 5a3. Invalid personal email is rejected
+@pytest.mark.asyncio
+async def test_invalid_personal_email_rejected(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    response = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={"personal_email": "invalid-email-address"}
+    )
+    assert response.status_code == 422
+
+# 5b. Student can update 10th mark
+@pytest.mark.asyncio
+async def test_student_can_update_tenth_mark(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    response = await async_client.patch("/api/v1/students/me", headers=auth_users["student"], json={"tenth_mark": 92.5})
+    assert response.status_code == 200
+    assert response.json()["tenth_mark"] == 92.5
+
+# 5c. Student can update 12th mark
+@pytest.mark.asyncio
+async def test_student_can_update_twelfth_mark(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    response = await async_client.patch("/api/v1/students/me", headers=auth_users["student"], json={"twelfth_mark": 88.0})
+    assert response.status_code == 200
+    assert response.json()["twelfth_mark"] == 88.0
+
+# 5d. Student can update diploma mark
+@pytest.mark.asyncio
+async def test_student_can_update_diploma_mark(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    response = await async_client.patch("/api/v1/students/me", headers=auth_users["student"], json={"diploma_mark": 82.0})
+    assert response.status_code == 200
+    assert response.json()["diploma_mark"] == 82.0
+
+# 5e. Student can update portfolio URL
+@pytest.mark.asyncio
+async def test_student_can_update_portfolio_url(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    response = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={"portfolio_url": "https://github.com/student-one"}
+    )
+    assert response.status_code == 200
+    assert response.json()["portfolio_url"] == "https://github.com/student-one"
+
+# 5f. Invalid marks are rejected (< 0 or > 100)
+@pytest.mark.parametrize("field,val", [
+    ("tenth_mark", -5.0),
+    ("tenth_mark", 105.0),
+    ("twelfth_mark", -1.0),
+    ("twelfth_mark", 100.5),
+    ("diploma_mark", -10.0),
+    ("diploma_mark", 120.0),
+])
+@pytest.mark.asyncio
+async def test_invalid_marks_rejected(async_client: AsyncClient, auth_users: dict, test_profiles: dict, field: str, val: float):
+    response = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={field: val}
+    )
+    assert response.status_code == 422
+
+# 5g. Invalid portfolio URL is rejected
+@pytest.mark.parametrize("invalid_url", [
+    "not-a-url",
+    "ftp://invalid-scheme.com",
+    "javascript:alert(1)",
+    "htp://broken.com",
+])
+@pytest.mark.asyncio
+async def test_invalid_portfolio_url_rejected(async_client: AsyncClient, auth_users: dict, test_profiles: dict, invalid_url: str):
+    response = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={"portfolio_url": invalid_url}
+    )
+    assert response.status_code == 422
+
+# 5h. Optional marks can be set independently (10th + 12th without diploma, or 10th + diploma without 12th)
+@pytest.mark.asyncio
+async def test_optional_marks_independent(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    # Student path 1: 10th + 12th, no diploma
+    r1 = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={"tenth_mark": 90.0, "twelfth_mark": 85.0, "diploma_mark": None}
+    )
+    assert r1.status_code == 200
+    assert r1.json()["tenth_mark"] == 90.0
+    assert r1.json()["twelfth_mark"] == 85.0
+    assert r1.json()["diploma_mark"] is None
+
+    # Student path 2: 10th + diploma, no 12th
+    r2 = await async_client.patch(
+        "/api/v1/students/me",
+        headers=auth_users["student"],
+        json={"tenth_mark": 88.0, "twelfth_mark": None, "diploma_mark": 84.5}
+    )
+    assert r2.status_code == 200
+    assert r2.json()["tenth_mark"] == 88.0
+    assert r2.json()["twelfth_mark"] is None
+    assert r2.json()["diploma_mark"] == 84.5
+
+
 # 6-11. Student cannot modify academic fields
 @pytest.mark.parametrize("field,value", [
     ("cgpa", 9.9),

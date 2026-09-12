@@ -80,7 +80,15 @@ class StudentProfileService:
             raise
 
         old_state = {
-            "cgpa": float(profile.cgpa) if profile.cgpa else None,
+            "phone_number": profile.phone_number,
+            "personal_email": profile.personal_email,
+            "gender": profile.gender,
+            "section": profile.section,
+            "tenth_mark": float(profile.tenth_mark) if profile.tenth_mark is not None else None,
+            "twelfth_mark": float(profile.twelfth_mark) if profile.twelfth_mark is not None else None,
+            "diploma_mark": float(profile.diploma_mark) if profile.diploma_mark is not None else None,
+            "portfolio_url": profile.portfolio_url,
+            "cgpa": float(profile.cgpa) if profile.cgpa is not None else None,
             "branch_code": profile.branch_code,
             "active_backlogs": profile.active_backlogs,
         }
@@ -103,7 +111,15 @@ class StudentProfileService:
                 setattr(profile, key, value)
 
         new_state = {
-            "cgpa": float(profile.cgpa) if profile.cgpa else None,
+            "phone_number": profile.phone_number,
+            "personal_email": profile.personal_email,
+            "gender": profile.gender,
+            "section": profile.section,
+            "tenth_mark": float(profile.tenth_mark) if profile.tenth_mark is not None else None,
+            "twelfth_mark": float(profile.twelfth_mark) if profile.twelfth_mark is not None else None,
+            "diploma_mark": float(profile.diploma_mark) if profile.diploma_mark is not None else None,
+            "portfolio_url": profile.portfolio_url,
+            "cgpa": float(profile.cgpa) if profile.cgpa is not None else None,
             "branch_code": profile.branch_code,
             "active_backlogs": profile.active_backlogs,
         }

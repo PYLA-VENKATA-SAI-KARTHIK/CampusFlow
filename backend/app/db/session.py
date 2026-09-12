@@ -28,12 +28,16 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
+        connect_args = {}
+        if "postgresql" in settings.database_url:
+            connect_args = {"server_settings": {"search_path": "campusflow, public"}}
         _engine = create_async_engine(
             settings.database_url,
             echo=settings.database_echo,
             pool_pre_ping=True,  # Enable connection health checks
             pool_size=10,
             max_overflow=20,
+            connect_args=connect_args,
         )
     return _engine
 

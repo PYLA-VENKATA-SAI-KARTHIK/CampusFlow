@@ -39,15 +39,15 @@ export const AnalyticsDashboardPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-medium text-gray-500">Loading placement analytics...</p>
+        <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-slate-500">Loading placement analytics...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-lg mx-auto my-8">
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center max-w-lg mx-auto my-8 shadow-sm">
         <svg className="w-12 h-12 text-red-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
@@ -55,7 +55,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
         <p className="text-xs text-red-600 mt-1">{error || 'Unknown error occurred.'}</p>
         <button
           onClick={fetchOverview}
-          className="mt-4 px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition"
+          className="mt-4 px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-xl hover:bg-red-700 transition"
         >
           Try Again
         </button>
@@ -66,12 +66,21 @@ export const AnalyticsDashboardPage: React.FC = () => {
   const { drives_summary, placement_metrics, branch_placement_stats, recent_drives_activity } = data;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Institutional Placement Analytics</h1>
-          <p className="text-xs text-gray-500 mt-1">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Institutional Placement Analytics
+            </h1>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
             Aggregate institutional statistics, placement conversion rates, and drive metrics.
           </p>
         </div>
@@ -83,12 +92,12 @@ export const AnalyticsDashboardPage: React.FC = () => {
             placeholder="Drive UUID..."
             value={searchDriveId}
             onChange={(e) => setSearchDriveId(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48 sm:w-64"
+            className="border border-slate-300 rounded-xl px-3.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none w-48 sm:w-64 shadow-sm"
           />
           <button
             type="submit"
             disabled={!searchDriveId.trim()}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-md shadow-indigo-600/20 transition whitespace-nowrap"
           >
             Drive Analytics
           </button>
@@ -152,52 +161,52 @@ export const AnalyticsDashboardPage: React.FC = () => {
       />
 
       {/* Recent Drives Activity Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-gray-900">Recent Placement Drives</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Quick summary of recent drives with registrations & selections</p>
+            <h3 className="text-base font-bold text-slate-900">Recent Placement Drives</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Summary of recent recruitment activity, applications, and selections</p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
-            <thead className="bg-gray-50 text-gray-600 font-semibold uppercase tracking-wider">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+            <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
               <tr>
-                <th scope="col" className="px-5 py-3">Drive Title</th>
-                <th scope="col" className="px-5 py-3">Company</th>
-                <th scope="col" className="px-5 py-3">Status</th>
-                <th scope="col" className="px-5 py-3 text-right">Registrations</th>
-                <th scope="col" className="px-5 py-3 text-right">Selected</th>
-                <th scope="col" className="px-5 py-3 text-right">Actions</th>
+                <th scope="col" className="px-6 py-3.5">Drive Title</th>
+                <th scope="col" className="px-6 py-3.5">Company</th>
+                <th scope="col" className="px-6 py-3.5">Status</th>
+                <th scope="col" className="px-6 py-3.5 text-right">Registrations</th>
+                <th scope="col" className="px-6 py-3.5 text-right">Selected</th>
+                <th scope="col" className="px-6 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {recent_drives_activity && recent_drives_activity.length > 0 ? (
                 recent_drives_activity.map((drive: RecentDriveActivity) => (
-                  <tr key={drive.drive_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-semibold text-gray-900">{drive.title}</td>
-                    <td className="px-5 py-3 text-gray-600">{drive.company_name}</td>
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                  <tr key={drive.drive_id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-900">{drive.title}</td>
+                    <td className="px-6 py-4 text-slate-600">{drive.company_name}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                         drive.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-emerald-100 text-emerald-800'
                           : drive.status === 'PUBLISHED' || drive.status === 'ACTIVE'
                           ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
+                          : 'bg-slate-100 text-slate-800'
                       }`}>
                         {drive.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-right font-medium text-gray-800">{drive.registered_count}</td>
-                    <td className="px-5 py-3 text-right font-bold text-emerald-600">{drive.selected_count}</td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-6 py-4 text-right font-medium text-slate-800">{drive.registered_count}</td>
+                    <td className="px-6 py-4 text-right font-bold text-emerald-600">{drive.selected_count}</td>
+                    <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => navigate(`/drives/${drive.drive_id}/analytics`)}
-                        className="text-primary-600 hover:text-primary-800 font-semibold text-xs inline-flex items-center space-x-1"
+                        className="text-indigo-600 hover:text-indigo-800 font-bold text-xs inline-flex items-center space-x-1"
                       >
                         <span>View Funnel</span>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-3.5 h-3.5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                         </svg>
                       </button>
@@ -206,8 +215,8 @@ export const AnalyticsDashboardPage: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-5 py-6 text-center text-gray-400 font-medium">
-                    No drives found.
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-400 font-medium">
+                    No placement drives recorded yet.
                   </td>
                 </tr>
               )}

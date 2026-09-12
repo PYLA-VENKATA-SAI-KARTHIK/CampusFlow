@@ -11,40 +11,34 @@ interface KpiStatCardProps {
 
 const colorMap = {
   blue: {
-    bg: 'bg-blue-50',
-    text: 'text-blue-600',
-    border: 'border-blue-200',
-    badge: 'bg-blue-100 text-blue-800',
+    bg: 'bg-sky-50 text-sky-600',
+    border: 'border-sky-100',
+    badge: 'bg-sky-50 text-sky-700 border-sky-200',
   },
   green: {
-    bg: 'bg-green-50',
-    text: 'text-green-600',
-    border: 'border-green-200',
-    badge: 'bg-green-100 text-green-800',
+    bg: 'bg-emerald-50 text-emerald-600',
+    border: 'border-emerald-100',
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   },
   emerald: {
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-600',
-    border: 'border-emerald-200',
-    badge: 'bg-emerald-100 text-emerald-800',
+    bg: 'bg-emerald-50 text-emerald-600',
+    border: 'border-emerald-100',
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   },
   purple: {
-    bg: 'bg-purple-50',
-    text: 'text-purple-600',
-    border: 'border-purple-200',
-    badge: 'bg-purple-100 text-purple-800',
+    bg: 'bg-purple-50 text-purple-600',
+    border: 'border-purple-100',
+    badge: 'bg-purple-50 text-purple-700 border-purple-200',
   },
   amber: {
-    bg: 'bg-amber-50',
-    text: 'text-amber-600',
-    border: 'border-amber-200',
-    badge: 'bg-amber-100 text-amber-800',
+    bg: 'bg-amber-50 text-amber-600',
+    border: 'border-amber-100',
+    badge: 'bg-amber-50 text-amber-700 border-amber-200',
   },
   indigo: {
-    bg: 'bg-indigo-50',
-    text: 'text-indigo-600',
-    border: 'border-indigo-200',
-    badge: 'bg-indigo-100 text-indigo-800',
+    bg: 'bg-indigo-50 text-indigo-600',
+    border: 'border-indigo-100',
+    badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   },
 };
 
@@ -59,29 +53,29 @@ export const KpiStatCard: React.FC<KpiStatCardProps> = ({
   const styles = colorMap[color] || colorMap.blue;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all group">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           {title}
         </span>
         {icon && (
-          <div className={`p-2 rounded-lg ${styles.bg} ${styles.text}`}>
+          <div className={`p-2.5 rounded-xl ${styles.bg} transition-transform group-hover:scale-105`}>
             {icon}
           </div>
         )}
       </div>
-      <div className="mt-2 flex items-baseline justify-between">
-        <span className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+      <div className="mt-4 flex items-baseline justify-between">
+        <span className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
           {value}
         </span>
         {badge && (
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${styles.badge}`}>
+          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${styles.badge}`}>
             {badge}
           </span>
         )}
       </div>
       {subtitle && (
-        <p className="mt-1 text-xs text-gray-500 font-medium">
+        <p className="mt-1.5 text-xs text-slate-500 font-medium leading-relaxed">
           {subtitle}
         </p>
       )}

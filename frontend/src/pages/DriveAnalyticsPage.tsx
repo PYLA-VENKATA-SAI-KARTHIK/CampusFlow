@@ -42,15 +42,15 @@ export const DriveAnalyticsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-medium text-gray-500">Loading drive recruitment funnel...</p>
+        <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-slate-500">Loading drive recruitment funnel...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-lg mx-auto my-8">
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center max-w-lg mx-auto my-8 shadow-sm">
         <svg className="w-12 h-12 text-red-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
@@ -59,13 +59,13 @@ export const DriveAnalyticsPage: React.FC = () => {
         <div className="mt-4 flex items-center justify-center space-x-3">
           <button
             onClick={() => navigate('/analytics')}
-            className="px-4 py-2 bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg hover:bg-gray-300 transition"
+            className="px-4 py-2 bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl hover:bg-slate-300 transition"
           >
             ← Back to Overview
           </button>
           <button
             onClick={fetchDriveAnalytics}
-            className="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition"
+            className="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-xl hover:bg-red-700 transition"
           >
             Retry
           </button>
@@ -114,12 +114,12 @@ export const DriveAnalyticsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       {/* Top Header & Breadcrumb */}
       <div>
         <button
           onClick={() => navigate('/analytics')}
-          className="text-xs text-primary-600 hover:text-primary-800 font-medium inline-flex items-center space-x-1 mb-3"
+          className="text-xs text-indigo-600 hover:text-indigo-800 font-bold inline-flex items-center space-x-1 mb-3 transition"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -127,22 +127,22 @@ export const DriveAnalyticsPage: React.FC = () => {
           <span>Back to Institutional Overview</span>
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-slate-200">
           <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{title}</h1>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{title}</h1>
+              <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold ${
                 status === 'COMPLETED'
-                  ? 'bg-green-100 text-green-800'
+                  ? 'bg-emerald-100 text-emerald-800'
                   : status === 'ACTIVE' || status === 'PUBLISHED'
                   ? 'bg-blue-100 text-blue-800'
-                  : 'bg-gray-100 text-gray-800'
+                  : 'bg-slate-100 text-slate-800'
               }`}>
                 {status}
               </span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              <span className="font-semibold text-gray-700">{company_name}</span> &bull; {job_role}
+            <p className="text-sm text-slate-500 mt-1">
+              <span className="font-bold text-slate-700">{company_name}</span> &bull; {job_role}
             </p>
           </div>
         </div>
@@ -202,13 +202,16 @@ export const DriveAnalyticsPage: React.FC = () => {
       <FunnelBarChart
         steps={funnelSteps}
         title="Recruitment Conversion Funnel"
-        subtitle="End-to-end candidate drop-off from eligibility through final selection"
+        subtitle="End-to-end candidate progression from eligibility through final offer"
       />
 
       {/* Stage Breakdown Cards */}
       {stage_funnel.length > 0 && (
-        <div>
-          <h3 className="text-base font-bold text-gray-900 mb-3">Evaluation Stages Breakdown</h3>
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Evaluation Stages Breakdown</h3>
+            <p className="text-xs text-slate-500">Performance metrics per assessment and interview stage</p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {stage_funnel.map((stage, idx) => (
               <StageConversionCard
@@ -225,7 +228,7 @@ export const DriveAnalyticsPage: React.FC = () => {
       <BranchBreakdownTable
         driveData={branch_breakdown}
         title="Branch-wise Candidate Distribution"
-        subtitle="Aggregate candidate performance by department"
+        subtitle="Candidate performance breakdown across academic departments"
       />
     </div>
   );

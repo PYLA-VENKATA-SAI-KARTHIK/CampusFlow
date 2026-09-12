@@ -83,24 +83,24 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">Bulk Student Import</h3>
-              <p className="text-xs text-gray-500">Upload CSV to onboard students in batch</p>
+              <h3 className="text-base font-bold text-slate-900">Bulk Student Import</h3>
+              <p className="text-xs text-slate-500">Upload CSV to onboard students in batch</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 rounded-lg p-1 transition"
+            className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -110,13 +110,13 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
 
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
           {/* Format helper */}
-          <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-4 text-xs text-blue-800 space-y-2">
+          <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-900 space-y-2.5">
             <div className="flex justify-between items-center">
-              <span className="font-semibold text-blue-900">Required CSV Columns:</span>
+              <span className="font-bold text-indigo-950">Required CSV Columns:</span>
               <button
                 type="button"
                 onClick={handleDownloadSample}
-                className="text-blue-600 hover:text-blue-800 font-semibold underline flex items-center space-x-1"
+                className="text-indigo-600 hover:text-indigo-800 font-bold underline flex items-center space-x-1"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -124,16 +124,16 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                 <span>Download Sample Template</span>
               </button>
             </div>
-            <code className="block bg-white/80 p-2 rounded border border-blue-200 text-blue-950 font-mono text-[11px] overflow-x-auto">
+            <code className="block bg-white/90 p-2.5 rounded-xl border border-indigo-200 text-indigo-950 font-mono text-[11px] overflow-x-auto shadow-xs">
               email, full_name, roll_number, branch_code, batch_year, cgpa, active_backlogs
             </code>
-            <p className="text-[11px] text-blue-700">
-              Students will be registered as inactive with activation tokens dispatched via email.
+            <p className="text-[11px] text-indigo-700">
+              Students will be registered as inactive with single-use activation tokens dispatched via email.
             </p>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-start space-x-2">
+            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start space-x-2">
               <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -144,26 +144,28 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
           {!result ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                   Select CSV File
                 </label>
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-xl p-6 text-center cursor-pointer bg-gray-50/50 hover:bg-blue-50/20 transition flex flex-col items-center justify-center space-y-2"
+                  className="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-2xl p-8 text-center cursor-pointer bg-slate-50/50 hover:bg-indigo-50/20 transition flex flex-col items-center justify-center space-y-2"
                 >
-                  <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <div className="text-xs text-gray-600 font-medium">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="text-xs text-slate-700 font-medium">
                     {file ? (
-                      <span className="text-blue-600 font-bold">{file.name}</span>
+                      <span className="text-indigo-600 font-bold">{file.name}</span>
                     ) : (
                       <>
-                        <span className="text-blue-600 font-bold hover:underline">Click to browse</span> or drag and drop CSV
+                        <span className="text-indigo-600 font-bold hover:underline">Click to browse</span> or drag and drop CSV
                       </>
                     )}
                   </div>
-                  <p className="text-[11px] text-gray-400">CSV file format only</p>
+                  <p className="text-[11px] text-slate-400">CSV spreadsheet format only</p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -174,18 +176,18 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-2">
+              <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!file || loading}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition flex items-center space-x-1.5"
+                  className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center space-x-1.5"
                 >
                   {loading ? (
                     <>
@@ -202,39 +204,39 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             /* Result View */
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3">
-                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-center">
-                  <div className="text-xl font-extrabold text-gray-900">{result.total_rows}</div>
-                  <div className="text-[11px] font-medium text-gray-500 uppercase tracking-wide mt-0.5">Total Rows</div>
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                  <div className="text-2xl font-extrabold text-slate-900">{result.total_rows}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">Total Rows</div>
                 </div>
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
-                  <div className="text-xl font-extrabold text-emerald-600">{result.success_count}</div>
-                  <div className="text-[11px] font-medium text-emerald-700 uppercase tracking-wide mt-0.5">Imported</div>
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+                  <div className="text-2xl font-extrabold text-emerald-600">{result.success_count}</div>
+                  <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mt-0.5">Imported</div>
                 </div>
-                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-center">
-                  <div className="text-xl font-extrabold text-rose-600">{result.error_count}</div>
-                  <div className="text-[11px] font-medium text-rose-700 uppercase tracking-wide mt-0.5">Errors</div>
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-center">
+                  <div className="text-2xl font-extrabold text-rose-600">{result.error_count}</div>
+                  <div className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mt-0.5">Errors</div>
                 </div>
               </div>
 
               {result.errors.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-gray-900 flex items-center space-x-1.5">
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center space-x-1.5">
                     <span className="w-2 h-2 rounded-full bg-rose-500" />
                     <span>Row Validation Failures ({result.errors.length})</span>
                   </h4>
-                  <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-xl">
-                    <table className="min-w-full divide-y divide-gray-200 text-xs">
-                      <thead className="bg-gray-50 sticky top-0">
+                  <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-2xl">
+                    <table className="min-w-full divide-y divide-slate-200 text-xs">
+                      <thead className="bg-slate-50 sticky top-0">
                         <tr>
-                          <th className="px-3 py-2 text-left font-semibold text-gray-600 w-20">Row #</th>
-                          <th className="px-3 py-2 text-left font-semibold text-gray-600">Error Description</th>
+                          <th className="px-4 py-2.5 text-left font-bold text-slate-600 w-20">Row #</th>
+                          <th className="px-4 py-2.5 text-left font-bold text-slate-600">Error Description</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100 bg-white">
+                      <tbody className="divide-y divide-slate-100 bg-white">
                         {result.errors.map((err, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 font-mono font-bold text-gray-700">{err.row_number}</td>
-                            <td className="px-3 py-2 text-rose-600">{err.error}</td>
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="px-4 py-2.5 font-mono font-bold text-slate-700">{err.row_number}</td>
+                            <td className="px-4 py-2.5 text-rose-600">{err.error}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -243,18 +245,18 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3 pt-2">
+              <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="px-4 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
                 >
                   Import Another File
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+                  className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition"
                 >
                   Done
                 </button>

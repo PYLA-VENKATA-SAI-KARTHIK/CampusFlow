@@ -11,11 +11,13 @@ export const PushNotificationOptIn = () => {
     const checkStatus = async () => {
       if (pushNotificationService.isPushSupported()) {
         setIsSupported(true);
-        try {
-          const status = await pushNotificationService.getStatus();
-          setIsSubscribed(status.has_active_subscription);
-        } catch (e) {
-          // Ignore offline / status check errors
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          try {
+            const status = await pushNotificationService.getStatus();
+            setIsSubscribed(status.has_active_subscription);
+          } catch (e) {
+            // Ignore offline / status check errors
+          }
         }
       }
     };
@@ -57,16 +59,31 @@ export const PushNotificationOptIn = () => {
       <button
         onClick={handleToggle}
         disabled={loading}
-        className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+        className={`px-3 py-1.5 rounded-xl font-bold transition-all shadow-sm flex items-center space-x-1.5 ${
           isSubscribed
-            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+            : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
         }`}
         title={isSubscribed ? 'Disable browser push notifications' : 'Enable browser push notifications'}
       >
-        {loading ? 'Updating...' : isSubscribed ? '🔔 Push Enabled' : '🔕 Enable Push'}
+        {loading ? (
+          <span className="flex items-center space-x-1">
+            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <span>Updating...</span>
+          </span>
+        ) : isSubscribed ? (
+          <>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Push Enabled</span>
+          </>
+        ) : (
+          <>
+            <span className="w-2 h-2 rounded-full bg-indigo-400" />
+            <span>Enable Push</span>
+          </>
+        )}
       </button>
-      {message && <span className="text-gray-500">{message}</span>}
+      {message && <span className="text-[11px] text-slate-500 font-medium">{message}</span>}
     </div>
   );
 };

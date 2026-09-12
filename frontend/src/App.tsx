@@ -4,6 +4,10 @@ import { AppLayout } from './layouts/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { PlacementDrivesPage } from './pages/PlacementDrivesPage';
+import { MyApplicationsPage } from './pages/MyApplicationsPage';
+import { MyProfilePage } from './pages/MyProfilePage';
+import { SettingsPage } from './pages/SettingsPage';
 import { NotificationCenterPage } from './pages/NotificationCenterPage';
 import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage';
 import { DriveAnalyticsPage } from './pages/DriveAnalyticsPage';
@@ -30,6 +34,11 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/drives" element={<PlacementDrivesPage />} />
+            <Route path="/applications" element={<MyApplicationsPage />} />
+            <Route path="/profile" element={<MyProfilePage />} />
+            <Route path="/resume" element={<MyProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/notifications" element={<NotificationCenterPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
