@@ -1,0 +1,8 @@
+# Example Staging Variables (DO NOT PUT REAL CREDENTIALS HERE)
+project_id             = "REPLACE_WITH_YOUR_STAGING_GCP_PROJECT_ID"
+region                 = "asia-south1"
+db_tier                = "db-f1-micro"
+container_image_api    = "asia-south1-docker.pkg.dev/REPLACE_WITH_PROJECT_ID/campusflow-staging/api:latest"
+container_image_worker = "asia-south1-docker.pkg.dev/REPLACE_WITH_PROJECT_ID/campusflow-staging/worker:latest"
+cors_allowed_origins   = "https://staging.campusflow.example.com,http://localhost:5173"
+frontend_base_url      = "https://staging.campusflow.example.com"

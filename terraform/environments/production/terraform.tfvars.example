@@ -1,0 +1,8 @@
+# Example Production Variables (DO NOT PUT REAL CREDENTIALS HERE)
+project_id             = "REPLACE_WITH_YOUR_PRODUCTION_GCP_PROJECT_ID"
+region                 = "asia-south1"
+db_tier                = "db-custom-2-7680"
+container_image_api    = "asia-south1-docker.pkg.dev/REPLACE_WITH_PROJECT_ID/campusflow-production/api:v1.0.0"
+container_image_worker = "asia-south1-docker.pkg.dev/REPLACE_WITH_PROJECT_ID/campusflow-production/worker:v1.0.0"
+cors_allowed_origins   = "https://campusflow.college,https://api.campusflow.college"
+frontend_base_url      = "https://campusflow.college"
