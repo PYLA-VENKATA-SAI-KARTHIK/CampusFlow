@@ -22,6 +22,14 @@ from app.models.preparation import (
     PreparationRoleTopic,
     PreparationMaterial,
 )
+from app.models.assessment import (
+    Assessment,
+    AssessmentQuestion,
+    AssessmentAssignment,
+    AssessmentAttempt,
+    AssessmentResponse,
+    AssessmentResult,
+)
 
 __all__ = [
     "AccountActivation",
@@ -43,5 +51,12 @@ __all__ = [
     "PreparationTopic",
     "PreparationRoleTopic",
     "PreparationMaterial",
+    "Assessment",
+    "AssessmentQuestion",
+    "AssessmentAssignment",
+    "AssessmentAttempt",
+    "AssessmentResponse",
+    "AssessmentResult",
 ]
+
 

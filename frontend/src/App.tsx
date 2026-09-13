@@ -15,6 +15,10 @@ import { DriveAnalyticsPage } from './pages/DriveAnalyticsPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminAuditLogsPage } from './pages/AdminAuditLogsPage';
 import { PreparationHubPage } from './pages/PreparationHubPage';
+import { AssessmentsPage } from './pages/AssessmentsPage';
+import { AssessmentBuilderPage } from './pages/AssessmentBuilderPage';
+import { AssessmentPlayerPage } from './pages/AssessmentPlayerPage';
+import { AssessmentResultPage } from './pages/AssessmentResultPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
@@ -40,14 +44,22 @@ function App() {
             <Route path="/drives/:id" element={<DriveDetailsPage />} />
             <Route path="/applications" element={<MyApplicationsPage />} />
             <Route path="/preparation" element={<PreparationHubPage />} />
+            <Route path="/assessments" element={<AssessmentsPage />} />
+            <Route path="/assessments/results/:attemptId" element={<AssessmentResultPage />} />
             <Route path="/profile" element={<MyProfilePage />} />
             <Route path="/resume" element={<MyProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/notifications" element={<NotificationCenterPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-            {/* Officer & Admin Analytics */}
+            {/* Student Assessment Player */}
+            <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
+              <Route path="/assessments/player/:attemptId" element={<AssessmentPlayerPage />} />
+            </Route>
+
+            {/* Officer & Admin Assessment Builder & Analytics */}
             <Route element={<ProtectedRoute allowedRoles={['OFFICER', 'ADMIN']} />}>
+              <Route path="/assessments/builder/:id" element={<AssessmentBuilderPage />} />
               <Route path="/analytics" element={<AnalyticsDashboardPage />} />
               <Route path="/drives/:id/analytics" element={<DriveAnalyticsPage />} />
             </Route>
