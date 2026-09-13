@@ -22,6 +22,9 @@ class CompanyBrief(BaseModel):
     id: UUID
     name: str
     logo_gcs_path: str | None = None
+    website: str | None = None
+    industry: str | None = None
+    description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

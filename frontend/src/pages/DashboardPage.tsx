@@ -95,8 +95,12 @@ export const DashboardPage: React.FC = () => {
   const handleOpenBroadcastModal = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputDriveId.trim()) {
+      const match = drives.find((d) => d.id === inputDriveId.trim());
+      const displayTitle = match
+        ? `${match.company_name || (match as any).company?.name || 'Company'} — ${match.role_title || (match as any).job_role || 'Role'}`
+        : `Drive ID: ${inputDriveId.trim()}`;
       setSelectedDriveId(inputDriveId.trim());
-      setSelectedDriveTitle(`Drive ID: ${inputDriveId.trim()}`);
+      setSelectedDriveTitle(displayTitle);
       setIsBroadcastModalOpen(true);
     }
   };
@@ -354,7 +358,7 @@ export const DashboardPage: React.FC = () => {
                       )}
 
                       <button
-                        onClick={() => navigate('/drives')}
+                        onClick={() => navigate(drive.id ? `/drives/${drive.id}` : '/drives')}
                         className="px-3.5 py-1.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition shadow-sm"
                       >
                         {isApplied ? 'View Status' : 'View Drive'}
@@ -530,25 +534,60 @@ export const DashboardPage: React.FC = () => {
             </span>
           </div>
 
-          <form onSubmit={handleOpenBroadcastModal} className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <label htmlFor="drive-id-input" className="sr-only">Drive UUID</label>
-              <input
-                id="drive-id-input"
-                type="text"
-                placeholder="Enter Placement Drive UUID (e.g. 550e8400-e29b-41d4-a716-446655440000)"
-                value={inputDriveId}
-                onChange={(e) => setInputDriveId(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition shadow-sm"
-              />
+          <form onSubmit={handleOpenBroadcastModal} className="space-y-3">
+            {drives.length > 0 && (
+              <div>
+                <label htmlFor="drive-select-dropdown" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Select Placement Drive
+                </label>
+                <select
+                  id="drive-select-dropdown"
+                  value={inputDriveId}
+                  onChange={(e) => {
+                    setInputDriveId(e.target.value);
+                    const match = drives.find((d) => d.id === e.target.value);
+                    if (match) {
+                      const comp = match.company_name || (match as any).company?.name || 'Company';
+                      const role = match.role_title || (match as any).job_role || 'Role';
+                      setSelectedDriveTitle(`${comp} — ${role}`);
+                    }
+                  }}
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none bg-white shadow-sm transition"
+                >
+                  <option value="">-- Choose a Placement Drive to Broadcast --</option>
+                  {drives.map((d) => {
+                    const comp = d.company_name || (d as any).company?.name || 'Company';
+                    const role = d.role_title || (d as any).job_role || 'Role';
+                    return (
+                      <option key={d.id} value={d.id}>
+                        {comp} — {role} ({d.status})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <label htmlFor="drive-id-input" className="sr-only">Drive UUID</label>
+                <input
+                  id="drive-id-input"
+                  type="text"
+                  placeholder="Placement Drive UUID (auto-populated when selecting a drive above)"
+                  value={inputDriveId}
+                  onChange={(e) => setInputDriveId(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition shadow-sm bg-slate-50"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!inputDriveId.trim()}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md shadow-indigo-600/20 whitespace-nowrap transition"
+              >
+                Compose Broadcast
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={!inputDriveId.trim()}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md shadow-indigo-600/20 whitespace-nowrap transition"
-            >
-              Compose Broadcast
-            </button>
           </form>
 
           {selectedDriveId && (

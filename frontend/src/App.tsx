@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PlacementDrivesPage } from './pages/PlacementDrivesPage';
+import { DriveDetailsPage } from './pages/DriveDetailsPage';
 import { MyApplicationsPage } from './pages/MyApplicationsPage';
 import { MyProfilePage } from './pages/MyProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -13,6 +14,7 @@ import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage';
 import { DriveAnalyticsPage } from './pages/DriveAnalyticsPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminAuditLogsPage } from './pages/AdminAuditLogsPage';
+import { PreparationHubPage } from './pages/PreparationHubPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
@@ -35,7 +37,9 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/drives" element={<PlacementDrivesPage />} />
+            <Route path="/drives/:id" element={<DriveDetailsPage />} />
             <Route path="/applications" element={<MyApplicationsPage />} />
+            <Route path="/preparation" element={<PreparationHubPage />} />
             <Route path="/profile" element={<MyProfilePage />} />
             <Route path="/resume" element={<MyProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />

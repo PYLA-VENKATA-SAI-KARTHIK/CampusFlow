@@ -139,22 +139,20 @@ class PlacementDriveService:
                 drive.my_eligibility = EligibilityResult(is_eligible=is_eligible, reasons=reasons)
             else:
                 drive.my_eligibility = EligibilityResult(is_eligible=False, reasons=["Student profile not found."])
+            
+            existing_reg = await self.reg_repo.get_by_drive_and_student(drive_id, current_user_id)
+            drive.is_registered = existing_reg is not None
                 
         return drive
 
     async def list_drives(
         self, status: str | None = None, skip: int = 0, limit: int = 20, is_student: bool = False
     ) -> tuple[Sequence[PlacementDrive], int]:
-        drives, total = await self.drive_repo.list_drives(status=status, skip=skip, limit=limit)
-        
-        if is_student:
-            # Students cannot see DRAFT drives
-            drives = [d for d in drives if d.status != "DRAFT"]
-            # Total might be slightly off if we filter here, but normally we'd filter in SQL
-            # For simplicity in this mock, this is acceptable. Ideally, pass exclude_draft to repo.
-            total = len(drives)
-
-        return drives, total
+        if is_student and status == "DRAFT":
+            return [], 0
+        return await self.drive_repo.list_drives(
+            status=status, skip=skip, limit=limit, exclude_draft=is_student
+        )
 
     async def update_drive(
         self, drive_id: UUID, data: PlacementDriveUpdate, user_id: UUID | str

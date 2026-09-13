@@ -1181,3 +1181,19 @@ sequenceDiagram
 | **Microservices** | ❌ Rejected | Single college use case; modular monolith is simpler and sufficient |
 | **Celery** | ❌ Rejected | Cloud Tasks is managed and eliminates need for a Celery broker (Redis/RabbitMQ) |
 | **Firebase Auth** | ❌ Rejected | Custom JWT gives us full control over token claims, rotation, and revocation |
+
+---
+
+## 11. Student Placement Preparation & Readiness Architecture
+
+### 11.1 Currently Implemented: Phase 5.1 (Placement Preparation Hub)
+- **Role Taxonomy (`preparation_roles`)**: Standard career profiles (Software Developer, AI/ML Engineer, Data Analyst, Cloud & DevOps, QA / Test Automation, GenAI Engineer).
+- **Categories & Topics (`preparation_categories`, `preparation_topics`, `preparation_role_topics`)**: Knowledge taxonomy across Aptitude, Verbal Ability, Technical Core, and Interview Preparation.
+- **Resource Library (`preparation_materials`)**: Curated study materials (Articles, Docs, Videos, Practice Questions) mapped to topics and target roles.
+- **Community Sourcing & Officer Review Workflow**: Students suggest resources (`status=PENDING`); Placement Officers and Admins review, approve, or reject submissions with full audit logging.
+
+### 11.2 Future Planned Roadmap (NOT Yet Implemented)
+- **Phase 5.2 (Planned Future Capability)**: Placement Assessment Engine (timed practice tests, question banks, section scoring, deterministic weakness mapping).
+- **Phase 5.3 (Planned Future Capability)**: AI Mock Interview (role-specific mock interview room, server-side LLM provider abstraction with local mock service, actionable feedback).
+- **Phase 5.4 (Planned Future Capability)**: Personalized Placement Readiness (Placement Readiness Score gauge, priority study recommendations on dashboard).
+

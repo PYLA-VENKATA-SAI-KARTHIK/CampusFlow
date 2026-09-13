@@ -15,6 +15,13 @@ from app.models.placement_stage import PlacementStage
 from app.models.stage_assignment import StageAssignment
 from app.models.notification import Notification
 from app.models.push_subscription import PushSubscription
+from app.models.preparation import (
+    PreparationRole,
+    PreparationCategory,
+    PreparationTopic,
+    PreparationRoleTopic,
+    PreparationMaterial,
+)
 
 __all__ = [
     "AccountActivation",
@@ -31,5 +38,10 @@ __all__ = [
     "StageAssignment",
     "Notification",
     "PushSubscription",
+    "PreparationRole",
+    "PreparationCategory",
+    "PreparationTopic",
+    "PreparationRoleTopic",
+    "PreparationMaterial",
 ]
 

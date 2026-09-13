@@ -13,6 +13,7 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.students import router as students_router
 from app.api.v1.officers import router as officers_router
 from app.api.v1.analytics import router as analytics_router
+from app.api.v1.preparation import router as preparation_router
 
 api_v1_router = APIRouter()
 
@@ -24,8 +25,10 @@ api_v1_router.include_router(drives_router, prefix="/drives", tags=["Placement D
 api_v1_router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
 api_v1_router.include_router(students_router, prefix="/students", tags=["Students"])
 api_v1_router.include_router(officers_router, prefix="/officers", tags=["Officers"])
+api_v1_router.include_router(preparation_router, prefix="/preparation", tags=["Preparation"])
 api_v1_router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
 api_v1_router.include_router(analytics_router, prefix="/admin/analytics", tags=["Analytics"])
 api_v1_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
+
 
 
