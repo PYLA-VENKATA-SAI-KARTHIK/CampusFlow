@@ -35,12 +35,33 @@ class DriveRegistrationRepository:
         return set(result.scalars().all())
 
 
+    async def get_registered_student_ids_for_drive_and_students(self, drive_id: UUID, student_ids: Sequence[UUID]) -> set[UUID]:
+        if not student_ids:
+            return set()
+        stmt = select(DriveRegistration.student_user_id).where(
+            DriveRegistration.drive_id == drive_id,
+            DriveRegistration.student_user_id.in_(student_ids),
+            DriveRegistration.status == "REGISTERED",
+        )
+        result = await self.session.execute(stmt)
+        return set(result.scalars().all())
+
     async def create(self, registration: DriveRegistration) -> DriveRegistration:
         self.session.add(registration)
         await self.session.flush()
         return registration
 
-    async def list_by_drive_id(self, drive_id: UUID, skip: int = 0, limit: int = 20, status: str | None = None, branch: str | None = None) -> tuple[Sequence[tuple[DriveRegistration, StudentProfile, User]], int]:
+    async def list_by_drive_id(
+        self,
+        drive_id: UUID,
+        skip: int = 0,
+        limit: int = 20,
+        status: str | None = None,
+        branch: str | None = None,
+        search: str | None = None,
+    ) -> tuple[Sequence[tuple[DriveRegistration, StudentProfile, User]], int]:
+        from sqlalchemy import or_
+
         # Count total
         count_stmt = select(func.count()).select_from(DriveRegistration).join(
             User, DriveRegistration.student_user_id == User.id
@@ -52,6 +73,14 @@ class DriveRegistrationRepository:
             count_stmt = count_stmt.where(DriveRegistration.status == status)
         if branch:
             count_stmt = count_stmt.where(func.lower(StudentProfile.branch_code) == branch.lower())
+        if search and search.strip():
+            term = f"%{search.strip()}%"
+            search_filter = or_(
+                User.full_name.ilike(term),
+                User.email.ilike(term),
+                StudentProfile.roll_number.ilike(term),
+            )
+            count_stmt = count_stmt.where(search_filter)
             
         total = await self.session.scalar(count_stmt) or 0
 
@@ -66,6 +95,14 @@ class DriveRegistrationRepository:
             stmt = stmt.where(DriveRegistration.status == status)
         if branch:
             stmt = stmt.where(func.lower(StudentProfile.branch_code) == branch.lower())
+        if search and search.strip():
+            term = f"%{search.strip()}%"
+            search_filter = or_(
+                User.full_name.ilike(term),
+                User.email.ilike(term),
+                StudentProfile.roll_number.ilike(term),
+            )
+            stmt = stmt.where(search_filter)
 
         stmt = stmt.order_by(DriveRegistration.registered_at.desc()).offset(skip).limit(limit)
         result = await self.session.execute(stmt)

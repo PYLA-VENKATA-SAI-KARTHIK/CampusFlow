@@ -117,8 +117,8 @@ test.describe('CampusFlow SaaS Workspace Redesign Verification', () => {
     // 3. Sidebar Navigation to My Applications
     await page.click('nav button:has-text("My Applications")');
     await page.waitForURL('**/applications');
-    await expect(page.getByRole('heading', { name: 'My Applications' })).toBeVisible();
-    await expect(page.locator('text=Recruitment Stage Progression')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Placement Journey' })).toBeVisible();
+    await expect(page.locator('text=Recruitment Funnel').first()).toBeVisible();
     await expect(page.locator('text=Online Assessment').first()).toBeVisible();
 
     // 4. Sidebar Navigation to My Profile & Academic Read-Only Verification

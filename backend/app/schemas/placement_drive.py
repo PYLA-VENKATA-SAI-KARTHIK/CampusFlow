@@ -67,7 +67,9 @@ DriveStatus = Literal[
     "ASSESSMENT",
     "INTERVIEW",
     "RESULT",
-    "COMPLETED"
+    "COMPLETED",
+    "CANCELLED",
+    "ARCHIVED",
 ]
 
 

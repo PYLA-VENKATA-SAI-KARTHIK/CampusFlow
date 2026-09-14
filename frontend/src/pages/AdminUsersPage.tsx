@@ -5,6 +5,7 @@ import type { AdminUser, PaginatedResult } from '../types/admin';
 import { CreateUserModal } from '../components/admin/CreateUserModal';
 import { EditUserModal } from '../components/admin/EditUserModal';
 import { BulkImportModal } from '../components/admin/BulkImportModal';
+import { Modal, Button } from '../components/ui';
 
 export const AdminUsersPage: React.FC = () => {
   const { user: currentAdmin } = useAuthStore();
@@ -63,18 +64,19 @@ export const AdminUsersPage: React.FC = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleToggleActive = async (targetUser: AdminUser) => {
+  const [userToToggle, setUserToToggle] = useState<AdminUser | null>(null);
+
+  const handleToggleActive = (targetUser: AdminUser) => {
     if (currentAdmin?.id === targetUser.id && targetUser.is_active) {
       setError('Security constraint: You cannot deactivate your own account.');
       return;
     }
+    setUserToToggle(targetUser);
+  };
 
-    const confirmMsg = targetUser.is_active
-      ? `Are you sure you want to deactivate ${targetUser.full_name}? All active sessions will be terminated.`
-      : `Reactivate account for ${targetUser.full_name}?`;
-
-    if (!window.confirm(confirmMsg)) return;
-
+  const handleConfirmToggle = async () => {
+    if (!userToToggle) return;
+    const targetUser = userToToggle;
     try {
       setActionLoadingId(targetUser.id);
       setError(null);
@@ -85,6 +87,7 @@ export const AdminUsersPage: React.FC = () => {
         `User ${targetUser.full_name} was successfully ${targetUser.is_active ? 'deactivated' : 'activated'}.`
       );
       setTimeout(() => setActionSuccess(null), 4000);
+      setUserToToggle(null);
       fetchUsers();
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to update user status.');
@@ -269,7 +272,7 @@ export const AdminUsersPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
-                            {u.full_name.charAt(0).toUpperCase()}
+                            {(u.full_name || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <div className="font-bold text-slate-900 flex items-center space-x-1.5">
@@ -404,6 +407,39 @@ export const AdminUsersPage: React.FC = () => {
           setTimeout(() => setActionSuccess(null), 4000);
         }}
       />
+
+      {userToToggle && (
+        <Modal
+          isOpen={!!userToToggle}
+          onClose={() => setUserToToggle(null)}
+          title={userToToggle.is_active ? 'Deactivate User Account' : 'Reactivate User Account'}
+          description={`Are you sure you want to ${
+            userToToggle.is_active ? 'deactivate' : 'reactivate'
+          } the account for ${userToToggle.full_name}?`}
+          maxWidth="md"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-600">
+              {userToToggle.is_active
+                ? 'Deactivating this user will terminate their active sessions and prevent them from logging in.'
+                : 'Reactivating this user will restore their access permissions immediately.'}
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <Button variant="outline" size="sm" onClick={() => setUserToToggle(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant={userToToggle.is_active ? 'danger' : 'primary'}
+                size="sm"
+                isLoading={actionLoadingId === userToToggle.id}
+                onClick={handleConfirmToggle}
+              >
+                {userToToggle.is_active ? 'Yes, Deactivate' : 'Yes, Reactivate'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

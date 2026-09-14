@@ -59,9 +59,11 @@ htmlcov/
 # Alembic
 # (keep versions/ tracked — never ignore migration files)
 
-# Logs
+# Logs & Storage
 *.log
 logs/
+.local_storage/
+backend/.local_storage/
 
 # Terraform
 **/.terraform/

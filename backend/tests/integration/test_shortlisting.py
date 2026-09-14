@@ -418,3 +418,189 @@ async def test_stage_assignment_idor_protection(
 
     # Stage does not belong to published_drive → 404
     assert response.status_code == 404, response.text
+
+
+@pytest.mark.asyncio
+async def test_shortlist_duplicate_student_ids(
+    async_client: AsyncClient,
+    auth_users: dict,
+    published_drive: str,
+    active_stage: dict,
+    student_registration: User,
+    db_session: AsyncSession,
+):
+    """Sending duplicate student IDs in shortlist request handles deduplication safely."""
+    student_id = str(student_registration.id)
+
+    response = await async_client.post(
+        f"/api/v1/drives/{published_drive}/stages/{active_stage['id']}/shortlist",
+        headers=auth_users["officer"],
+        json={"student_ids": [student_id, student_id, student_id]},
+    )
+
+    assert response.status_code == 201, response.text
+    assert "1 students shortlisted" in response.json()["message"]
+
+    assignments = (await db_session.execute(select(StageAssignment))).scalars().all()
+    assert len(assignments) == 1
+    assert assignments[0].status == "SHORTLISTED"
+
+
+@pytest.mark.asyncio
+async def test_shortlist_mixed_valid_and_invalid_atomic_failure(
+    async_client: AsyncClient,
+    auth_users: dict,
+    published_drive: str,
+    active_stage: dict,
+    student_registration: User,
+    db_session: AsyncSession,
+):
+    """If any student in the list is invalid/unregistered, no assignments are created."""
+    valid_id = str(student_registration.id)
+    invalid_id = "00000000-0000-0000-0000-000000000000"
+
+    response = await async_client.post(
+        f"/api/v1/drives/{published_drive}/stages/{active_stage['id']}/shortlist",
+        headers=auth_users["officer"],
+        json={"student_ids": [valid_id, invalid_id]},
+    )
+
+    assert response.status_code == 422, response.text
+
+    assignments = (await db_session.execute(select(StageAssignment))).scalars().all()
+    assert len(assignments) == 0
+
+
+@pytest.mark.asyncio
+async def test_bulk_status_update_success(
+    async_client: AsyncClient,
+    auth_users: dict,
+    published_drive: str,
+    active_stage: dict,
+    student_registration: User,
+    db_session: AsyncSession,
+):
+    """Officer can bulk update status of candidates already assigned to a stage."""
+    student_id = str(student_registration.id)
+
+    # 1. First shortlist
+    await async_client.post(
+        f"/api/v1/drives/{published_drive}/stages/{active_stage['id']}/shortlist",
+        headers=auth_users["officer"],
+        json={"student_ids": [student_id]},
+    )
+
+    # 2. Bulk update to SELECTED
+    response = await async_client.post(
+        f"/api/v1/drives/{published_drive}/stages/{active_stage['id']}/bulk-status",
+        headers=auth_users["officer"],
+        json={
+            "student_ids": [student_id],
+            "status": "SELECTED",
+            "result_notes": "Passed interview panel",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert "updated to SELECTED" in response.json()["message"]
+
+    assignment = (await db_session.execute(select(StageAssignment))).scalar_one()
+    assert assignment.status == "SELECTED"
+    assert assignment.result_notes == "Passed interview panel"
+
+
+@pytest.mark.asyncio
+async def test_bulk_status_update_unassigned_student_atomic_failure(
+    async_client: AsyncClient,
+    auth_users: dict,
+    published_drive: str,
+    active_stage: dict,
+    student_registration: User,
+    db_session: AsyncSession,
+):
+    """Updating status for a student not assigned to the stage fails with 422 and causes 0 updates."""
+    student_id = str(student_registration.id)
+    unassigned_id = str(auth_users["student_obj"].id)
+
+    response = await async_client.post(
+        f"/api/v1/drives/{published_drive}/stages/{active_stage['id']}/bulk-status",
+        headers=auth_users["officer"],
+        json={"student_ids": [unassigned_id], "status": "SELECTED"},
+    )
+
+    assert response.status_code == 422, response.text
+    assert "is not assigned to this stage" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_bulk_status_update_invalid_status_fails(
+    async_client: AsyncClient,
+    auth_users: dict,
+    published_drive: str,
+    active_stage: dict,
+    student_registration: User,
+):
+    """Invalid assignment status fails validation with 422."""
+    student_id = str(student_registration.id)
+
+    response = await async_client.post(
+        f"/api/v1/drives/{published_drive}/stages/{active_stage['id']}/bulk-status",
+        headers=auth_users["officer"],
+        json={"student_ids": [student_id], "status": "NONEXISTENT_STATUS"},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_bulk_status_student_forbidden(
+    async_client: AsyncClient,
+    auth_users: dict,
+    published_drive: str,
+    active_stage: dict,
+    student_registration: User,
+):
+    """Students cannot access bulk status endpoint."""
+    student_id = str(student_registration.id)
+
+    response = await async_client.post(
+        f"/api/v1/drives/{published_drive}/stages/{active_stage['id']}/bulk-status",
+        headers=auth_users["student"],
+        json={"student_ids": [student_id], "status": "SELECTED"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_bulk_status_idor_protection(
+    async_client: AsyncClient,
+    auth_users: dict,
+    published_drive: str,
+    test_company: str,
+    active_stage: dict,
+    student_registration: User,
+):
+    """Updating bulk status using stage from different drive fails with 404."""
+    student_id = str(student_registration.id)
+
+    # Create another drive
+    other_drive_resp = await async_client.post(
+        "/api/v1/drives",
+        json={
+            "company_id": test_company,
+            "title": "Other Bulk Drive",
+            "job_role": "QA",
+            "eligibility_criteria": {},
+        },
+        headers=auth_users["officer"],
+    )
+    other_drive_id = other_drive_resp.json()["id"]
+
+    response = await async_client.post(
+        f"/api/v1/drives/{other_drive_id}/stages/{active_stage['id']}/bulk-status",
+        headers=auth_users["officer"],
+        json={"student_ids": [student_id], "status": "SELECTED"},
+    )
+
+    assert response.status_code == 404

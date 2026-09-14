@@ -2,6 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/apiClient';
 import type { NotificationItem, PaginatedNotifications } from '../types/notification';
+import {
+  PageHeader,
+  Card,
+  CardContent,
+  Badge,
+  Button,
+  Alert,
+} from '../components/ui';
 
 export const NotificationCenterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -111,7 +119,7 @@ export const NotificationCenterPage: React.FC = () => {
     switch (type) {
       case 'DRIVE_PUBLISHED':
         return (
-          <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-xs">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
@@ -119,7 +127,7 @@ export const NotificationCenterPage: React.FC = () => {
         );
       case 'SHORTLISTED':
         return (
-          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0 shadow-xs">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
@@ -127,7 +135,7 @@ export const NotificationCenterPage: React.FC = () => {
         );
       case 'STAGE_UPDATED':
         return (
-          <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-xs">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
@@ -135,7 +143,7 @@ export const NotificationCenterPage: React.FC = () => {
         );
       default:
         return (
-          <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0 shadow-xs">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -148,203 +156,199 @@ export const NotificationCenterPage: React.FC = () => {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-200 gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Notification Center</h1>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Stay updated with real-time placement announcements, shortlist alerts, and schedule changes.
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <button
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
+      {/* PAGE HEADER */}
+      <PageHeader
+        eyebrow="Placement Action Center"
+        title="Notification Center"
+        description="Stay updated with real-time placement announcements, shortlist alerts, and recruitment schedule changes."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleMarkAllAsRead}
             disabled={isMarkingAll || unreadCount === 0}
-            className="px-4 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl border border-indigo-200 transition shadow-sm"
+            isLoading={isMarkingAll}
           >
             {isMarkingAll ? 'Marking All...' : 'Mark all as read'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
-      {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-200 pb-1">
-        <button
+      {/* TABS / FILTERS */}
+      <div className="flex items-center space-x-2 border-b border-slate-200/80 pb-3">
+        <Button
+          variant={filter === 'all' ? 'primary' : 'ghost'}
+          size="sm"
           onClick={() => handleFilterChange('all')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
-            filter === 'all'
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
         >
           All Notifications
-        </button>
-        <button
+        </Button>
+        <Button
+          variant={filter === 'unread' ? 'primary' : 'ghost'}
+          size="sm"
           onClick={() => handleFilterChange('unread')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center space-x-1.5 ${
-            filter === 'unread'
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
+          rightIcon={
+            unreadCount > 0 ? (
+              <Badge
+                variant={filter === 'unread' ? 'secondary' : 'primary'}
+                size="sm"
+                className="ml-1"
+              >
+                {unreadCount}
+              </Badge>
+            ) : undefined
+          }
         >
-          <span>Unread</span>
-          {unreadCount > 0 && (
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                filter === 'unread' ? 'bg-white text-indigo-600' : 'bg-indigo-100 text-indigo-700'
-              }`}
-            >
-              {unreadCount}
-            </span>
-          )}
-        </button>
+          Unread
+        </Button>
       </div>
 
-      {/* Content Area */}
+      {/* CONTENT AREA */}
       <div>
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="animate-pulse bg-white p-5 rounded-2xl border border-slate-200 flex space-x-4 shadow-sm"
-              >
-                <div className="rounded-xl bg-slate-200 h-10 w-10"></div>
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-                  <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+              <Card key={i} className="p-5">
+                <div className="animate-pulse flex items-start space-x-4">
+                  <div className="rounded-xl bg-slate-200 h-10 w-10 shrink-0" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="h-4 bg-slate-200 rounded w-1/4" />
+                    <div className="h-3 bg-slate-200 rounded w-3/4" />
+                  </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center shadow-sm">
-            <p className="text-red-700 font-medium mb-3">{error}</p>
-            <button
-              onClick={fetchNotifications}
-              className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-semibold hover:bg-red-700 transition"
-            >
-              Retry
-            </button>
-          </div>
+          <Alert variant="danger">
+            <div className="flex items-center justify-between">
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={fetchNotifications}>
+                Retry
+              </Button>
+            </div>
+          </Alert>
         ) : notifications.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 text-slate-400 mb-3">
+          <Card className="p-12 text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-2xl bg-slate-100 text-slate-400 mb-3">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth="1.5"
                   d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                 />
               </svg>
             </div>
             <h3 className="text-base font-bold text-slate-900">No notifications found</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
               {filter === 'unread'
                 ? "You're all caught up! No unread notifications."
                 : "You don't have any notifications yet."}
             </p>
-          </div>
+          </Card>
         ) : (
           <div className="space-y-3">
             {notifications.map((notification) => (
-              <div
+              <Card
                 key={notification.id}
-                className={`p-5 rounded-2xl border transition-all ${
+                className={`transition-all ${
                   notification.is_read
-                    ? 'bg-white border-slate-200 shadow-sm'
-                    : 'bg-indigo-50/40 border-indigo-200 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/10'
+                    ? 'bg-white border-slate-200/80 shadow-xs opacity-90 hover:opacity-100'
+                    : 'bg-indigo-50/30 border-indigo-200 shadow-sm ring-1 ring-indigo-500/10'
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start space-x-4 flex-1">
-                    {getNotificationIcon(notification.notification_type)}
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start space-x-4 flex-1 min-w-0">
+                      {getNotificationIcon(notification.notification_type)}
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 flex-wrap mb-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                          {notification.notification_type.replace(/_/g, ' ')}
-                        </span>
-                        {notification.push_sent && (
-                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            Push Sent
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 flex-wrap mb-1.5 gap-y-1">
+                          <Badge variant="neutral" size="sm">
+                            {notification.notification_type.replace(/_/g, ' ')}
+                          </Badge>
+                          {notification.push_sent && (
+                            <Badge variant="success" size="sm">
+                              Push Sent
+                            </Badge>
+                          )}
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {formatTimestamp(notification.created_at)}
                           </span>
-                        )}
-                        <span className="text-[11px] text-slate-400">
-                          {formatTimestamp(notification.created_at)}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-900 leading-snug">
-                        {notification.title}
-                      </h4>
-                      <p className="text-xs sm:text-sm text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed">
-                        {notification.body}
-                      </p>
-
-                      {/* Drive deep link if available */}
-                      {notification.reference_type === 'DRIVE' && notification.reference_id && (
-                        <div className="mt-3">
-                          <button
-                            onClick={() => handleNavigateReference(notification)}
-                            className="inline-flex items-center text-xs font-bold text-indigo-600 hover:text-indigo-800 transition"
-                          >
-                            <span>View Placement Drive Details</span>
-                            <svg className="w-3.5 h-3.5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                        <h4 className="text-sm font-bold text-slate-900 leading-snug">
+                          {notification.title}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed font-normal">
+                          {notification.body}
+                        </p>
 
-                  {/* Mark as read action */}
-                  {!notification.is_read && (
-                    <button
-                      onClick={() => handleMarkAsRead(notification.id)}
-                      className="ml-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-2.5 py-1 hover:bg-indigo-50 rounded-lg transition whitespace-nowrap"
-                      title="Mark as read"
-                    >
-                      Mark read
-                    </button>
-                  )}
-                </div>
-              </div>
+                        {/* Drive deep link if available */}
+                        {notification.reference_type === 'DRIVE' && notification.reference_id && (
+                          <div className="mt-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleNavigateReference(notification)}
+                              rightIcon={
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                              }
+                              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2.5 py-1"
+                            >
+                              <span>View Placement Drive Details</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mark as read action */}
+                    {!notification.is_read && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMarkAsRead(notification.id)}
+                        className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 text-xs shrink-0 whitespace-nowrap"
+                        title="Mark as read"
+                      >
+                        Mark read
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
 
-        {/* Pagination */}
+        {/* PAGINATION */}
         {total > pageSize && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-slate-200/80 gap-3">
             <span className="text-xs text-slate-500">
               Showing page <span className="font-bold text-slate-700">{page}</span> of{' '}
               <span className="font-bold text-slate-700">{totalPages}</span> ({total} total)
             </span>
             <div className="flex space-x-2">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1 || isLoading}
-                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition"
               >
                 Previous
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={!hasNext || isLoading}
-                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition"
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -352,3 +356,4 @@ export const NotificationCenterPage: React.FC = () => {
     </div>
   );
 };
+

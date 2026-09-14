@@ -78,9 +78,10 @@ class Settings(BaseSettings):
     # Rate limiting
     # -------------------------------------------------------------------------
     rate_limit_login: str = "10/minute"
-    rate_limit_activate: str = "5/15minutes"
+    rate_limit_activate: str = "30/minute"
     rate_limit_resend_activation_max: int = 5
     rate_limit_resend_activation_min_gap_minutes: int = 10
+    rate_limit_resume_download: str = "60/minute"
 
     # -------------------------------------------------------------------------
     # Bootstrap admin (optional, dev only)

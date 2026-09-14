@@ -120,3 +120,48 @@ export interface Branch {
   name: string;
   is_active: boolean;
 }
+
+export interface RegistrationStudentSummary {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  roll_number: string;
+  branch: string;
+  batch_year: number;
+  cgpa: number;
+  active_backlogs: number;
+  gender?: string | null;
+  avatar_url?: string | null;
+}
+
+export interface RegistrationStageSummary {
+  stage_id: string;
+  stage_name: string;
+  stage_type: string;
+  sequence_order: number;
+  status: string;
+  result_notes?: string | null;
+  assigned_at: string;
+}
+
+export interface DriveRegistrationWithStudent {
+  id: string;
+  drive_id: string;
+  student_user_id: string;
+  resume_gcs_path_at_registration: string;
+  status: string;
+  registered_at: string;
+  updated_at: string;
+  student: RegistrationStudentSummary;
+  current_stage?: RegistrationStageSummary | null;
+}
+
+export type AssignmentStatus = 'SHORTLISTED' | 'APPEARED' | 'SELECTED' | 'REJECTED';
+
+export interface BulkStageStatusRequest {
+  student_ids: string[];
+  status: AssignmentStatus;
+  result_notes?: string | null;
+}
+

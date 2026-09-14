@@ -4,11 +4,12 @@ Student Profile endpoints for officers.
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.dependencies import UserContext, get_db, require_role, get_storage_service
+from app.core.limiter import limiter
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.student_profile_repository import StudentProfileRepository
 from app.schemas.common import PaginatedResponse
@@ -66,7 +67,9 @@ async def get_student(
     return await service.get_profile_by_id(student_id)
 
 @router.get("/students/{student_id}/resume-download-url")
+@limiter.limit(get_settings().rate_limit_resume_download)
 async def get_resume_download_url(
+    request: Request,
     student_id: UUID,
     current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
     service: Annotated[StudentProfileService, Depends(get_profile_service)],

@@ -178,3 +178,16 @@ async def create_material_as_officer(
     return await service.create_material_as_officer(
         creator_user_id=current_user.user_id, data=data
     )
+
+
+@router.delete("/officers/materials/{material_id}", status_code=204)
+async def delete_material_as_officer(
+    material_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PreparationService, Depends(get_preparation_service)],
+) -> None:
+    """Delete an approved preparation material with audit logging. Restricted to OFFICER and ADMIN."""
+    await service.delete_material_as_officer(
+        material_id=material_id, user_id=current_user.user_id
+    )
+

@@ -77,7 +77,10 @@ class PreparationRepository:
             )
 
         if role_id:
-            stmt = stmt.where(PreparationMaterial.role_id == role_id)
+            stmt = stmt.where(
+                (PreparationMaterial.role_id == role_id)
+                | (PreparationMaterial.role_id.is_(None))
+            )
 
         if difficulty:
             stmt = stmt.where(PreparationMaterial.difficulty == difficulty)
@@ -122,6 +125,9 @@ class PreparationRepository:
         await self.session.flush()
         await self.session.refresh(material)
         return material
+
+    async def delete_material(self, material: PreparationMaterial) -> None:
+        await self.session.delete(material)
 
     async def list_pending_submissions(
         self, page: int = 1, page_size: int = 20

@@ -12,7 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.email import ActivationEmailData, EmailService
 from app.core.exceptions import (
+    AccountAlreadyRegisteredError,
     AccountNotActiveError,
+    AccountNotEligibleForRegistrationError,
     ActivationTokenExpiredError,
     ActivationTokenInvalidError,
     ActivationTokenUsedError,
@@ -20,6 +22,7 @@ from app.core.exceptions import (
     InvalidTokenError,
     MustChangePasswordError,
     ResendRateLimitError,
+    StudentNotFoundError,
 )
 from app.core.security import (
     generate_secure_token,
@@ -32,8 +35,9 @@ from app.models.account_activation import AccountActivation
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.repositories.auth_repository import AuthRepository
+from app.repositories.student_profile_repository import StudentProfileRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import TokenResponse
+from app.schemas.auth import RegisterResponse, TokenResponse
 from app.schemas.user import UserResponse
 
 logger = logging.getLogger(__name__)
@@ -50,14 +54,23 @@ class AuthService:
     async def authenticate(self, email: str, password: str) -> TokenResponse:
         """
         Authenticate user and return access + refresh tokens.
+        Accepts either email address or student registration number.
         Raises AuthenticationError if invalid credentials.
         Raises AccountNotActiveError if user is not active.
         """
-        user = await self.user_repo.get_by_email(email)
+        clean_identifier = email.strip()
+        user = await self.user_repo.get_by_email(clean_identifier)
+        if not user:
+            student_repo = StudentProfileRepository(self.session)
+            profile = await student_repo.get_by_roll_number(clean_identifier)
+            if profile and profile.user:
+                user = profile.user
+
         if not user:
             # We delay slightly to prevent timing attacks, though bcrypt is already slow
             hash_password("dummy")
             raise AuthenticationError("Invalid email or password.")
+
 
         if not verify_password(password, user.password_hash):
             raise AuthenticationError("Invalid email or password.")
@@ -193,3 +206,68 @@ class AuthService:
         # Future: Write audit log here
         
         await self.session.commit()
+
+    async def register_student(
+        self, registration_number: str, password: str
+    ) -> RegisterResponse:
+        """
+        Complete first-time student registration using student registration number.
+        - Verifies pre-provisioned student profile exists.
+        - Resolves associated user account.
+        - Verifies eligibility for first-time registration (not already active, role == STUDENT).
+        - Hashes password with bcrypt.
+        - Marks user active and clears must_change_password.
+        - Marks any existing AccountActivation record as used.
+        - Preserves all academic fields on StudentProfile.
+        - Returns confirmation response with registered email.
+        """
+        student_repo = StudentProfileRepository(self.session)
+        clean_reg_no = registration_number.strip()
+        profile = await student_repo.get_by_roll_number(clean_reg_no)
+
+        if not profile:
+            raise StudentNotFoundError(
+                "Registration number not found. Please contact your placement office."
+            )
+
+        user = profile.user
+        if not user:
+            raise StudentNotFoundError(
+                "Registration number not found. Please contact your placement office."
+            )
+
+        # Check if already activated / registered
+        if user.is_active:
+            raise AccountAlreadyRegisteredError(
+                "This student account is already registered. Please sign in."
+            )
+
+        # Check role eligibility
+        if user.role != "STUDENT":
+            raise AccountNotEligibleForRegistrationError(
+                "This student account is not eligible for registration."
+            )
+
+        # Hash the password securely and assign university email
+        university_email = f"{clean_reg_no}@klu.ac.in"
+        user.email = university_email
+        user.password_hash = hash_password(password)
+        user.is_active = True
+        user.must_change_password = False
+        user.last_login_at = datetime.now(timezone.utc)
+        self.session.add(user)
+
+        # If an activation token was provisioned (e.g. from bulk import), mark it used
+        activation = await self.auth_repo.get_activation_by_user(user.id)
+        if activation:
+            activation.used = True
+            self.session.add(activation)
+
+        await self.session.commit()
+
+        return RegisterResponse(
+            message="Registration completed successfully. You can now sign in.",
+            email=user.email,
+            registration_number=profile.roll_number,
+        )
+

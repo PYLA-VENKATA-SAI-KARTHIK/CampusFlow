@@ -20,12 +20,21 @@ class CampusFlowError(Exception):
 
     http_status: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     error_code: str = "internal_error"
+    title: str | None = None
     default_message: str = "An unexpected error occurred."
 
-    def __init__(self, message: str | None = None, detail: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str | None = None,
+        detail: str | None = None,
+        title: str | None = None,
+    ) -> None:
         self.message = message or self.default_message
         self.detail = detail
+        if title:
+            self.title = title
         super().__init__(self.message)
+
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +157,32 @@ class ResendRateLimitError(CampusFlowError):
 
 
 # ---------------------------------------------------------------------------
+# Registration-specific
+# ---------------------------------------------------------------------------
+
+
+class StudentNotFoundError(CampusFlowError):
+    http_status = status.HTTP_404_NOT_FOUND
+    error_code = "student_registration_not_found"
+    title = "Registration Number Not Found"
+    default_message = "Registration number not found. Please contact your placement office."
+
+
+class AccountAlreadyRegisteredError(CampusFlowError):
+    http_status = status.HTTP_409_CONFLICT
+    error_code = "account_already_registered"
+    title = "Account Already Registered"
+    default_message = "This student account is already registered. Please sign in."
+
+
+class AccountNotEligibleForRegistrationError(CampusFlowError):
+    http_status = status.HTTP_400_BAD_REQUEST
+    error_code = "account_not_eligible_for_registration"
+    title = "Account Not Eligible"
+    default_message = "This student account is not eligible for registration."
+
+
+# ---------------------------------------------------------------------------
 # Exception → HTTP response handler
 # ---------------------------------------------------------------------------
 
@@ -156,7 +191,7 @@ def _problem_detail_response(exc: CampusFlowError) -> JSONResponse:
     """Convert a CampusFlowError into an RFC 7807 Problem Details response."""
     body: dict = {
         "type": f"https://campusflow.internal/errors/{exc.error_code}",
-        "title": exc.error_code.replace("_", " ").title(),
+        "title": exc.title or exc.error_code.replace("_", " ").title(),
         "status": exc.http_status,
         "detail": exc.message,
     }
@@ -165,10 +200,47 @@ def _problem_detail_response(exc: CampusFlowError) -> JSONResponse:
     return JSONResponse(status_code=exc.http_status, content=body)
 
 
+
 async def campus_flow_exception_handler(
     request: Request, exc: CampusFlowError
 ) -> JSONResponse:
     return _problem_detail_response(exc)
+
+
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+
+
+async def request_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """
+    Format Pydantic RequestValidationErrors into an RFC 7807 response with a
+    clean human-readable string detail and structured errors list.
+    """
+    messages: list[str] = []
+    for err in exc.errors():
+        loc = err.get("loc", ())
+        field = str(loc[-1]) if loc else "field"
+        msg = str(err.get("msg", "Invalid value"))
+        if msg.startswith("Value error, "):
+            msg = msg[len("Value error, ") :]
+        if field and field not in ("body", "__root__"):
+            messages.append(f"{field}: {msg}")
+        else:
+            messages.append(msg)
+
+    summary = ". ".join(messages) if messages else "Request validation failed."
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "type": "https://campusflow.internal/errors/validation_error",
+            "title": "Validation Error",
+            "status": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "detail": summary,
+            "errors": jsonable_encoder(exc.errors()),
+        },
+    )
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:

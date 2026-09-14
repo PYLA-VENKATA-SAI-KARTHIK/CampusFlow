@@ -10,12 +10,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from fastapi.exceptions import RequestValidationError
+
 from app.api.internal.scheduler import router as internal_scheduler_router
 from app.api.internal.tasks import router as internal_tasks_router
 from app.api.router import api_v1_router
 from app.api.wellknown import router as wellknown_router
 from app.core.config import get_settings
-from app.core.exceptions import CampusFlowError, campus_flow_exception_handler, generic_exception_handler
+from app.core.exceptions import (
+    CampusFlowError,
+    campus_flow_exception_handler,
+    generic_exception_handler,
+    request_validation_exception_handler,
+)
 from app.core.limiter import limiter
 from app.core.logging_config import configure_logging, get_logger
 from app.core.security import init_jwt_manager
@@ -78,6 +85,7 @@ def create_app() -> FastAPI:
 
     # Error handling
     app.add_exception_handler(CampusFlowError, campus_flow_exception_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

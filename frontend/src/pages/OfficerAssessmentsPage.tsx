@@ -45,6 +45,7 @@ export const OfficerAssessmentsPage: React.FC = () => {
   const [dueDate, setDueDate] = useState<string>('');
   const [assigning, setAssigning] = useState(false);
   const [assignSuccess, setAssignSuccess] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -108,6 +109,7 @@ export const OfficerAssessmentsPage: React.FC = () => {
     setSelectedStudentIds([]);
     setDueDate('');
     setAssignSuccess(null);
+    setAssignError(null);
     try {
       const res = await apiClient.get('/officers/students', { params: { page_size: 100 } });
       setStudents(res.data.items || []);
@@ -120,6 +122,7 @@ export const OfficerAssessmentsPage: React.FC = () => {
     e.preventDefault();
     if (!assigningAssessment || selectedStudentIds.length === 0) return;
     setAssigning(true);
+    setAssignError(null);
     try {
       await assessmentService.assignAssessment(
         assigningAssessment.id,
@@ -132,7 +135,7 @@ export const OfficerAssessmentsPage: React.FC = () => {
         setAssignSuccess(null);
       }, 1200);
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Failed to assign assessment.');
+      setAssignError(err?.response?.data?.detail || 'Failed to assign assessment.');
     } finally {
       setAssigning(false);
     }
@@ -568,6 +571,12 @@ export const OfficerAssessmentsPage: React.FC = () => {
             {assignSuccess && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-xl">
                 {assignSuccess}
+              </div>
+            )}
+
+            {assignError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">
+                {assignError}
               </div>
             )}
 

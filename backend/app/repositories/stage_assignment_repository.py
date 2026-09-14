@@ -54,6 +54,66 @@ class StageAssignmentRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def list_assignments_for_stage_and_students(
+        self, stage_id: UUID, student_ids: Sequence[UUID]
+    ) -> Sequence[StageAssignment]:
+        if not student_ids:
+            return []
+        stmt = select(StageAssignment).where(
+            StageAssignment.stage_id == stage_id,
+            StageAssignment.student_user_id.in_(student_ids),
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_latest_assignments_for_students_in_drive(
+        self, drive_id: UUID, student_user_ids: Sequence[UUID]
+    ) -> dict[UUID, StageAssignment]:
+        if not student_user_ids:
+            return {}
+        stmt = (
+            select(StageAssignment)
+            .join(PlacementStage, StageAssignment.stage_id == PlacementStage.id)
+            .options(joinedload(StageAssignment.stage))
+            .where(
+                StageAssignment.drive_id == drive_id,
+                StageAssignment.student_user_id.in_(student_user_ids),
+            )
+            .order_by(StageAssignment.student_user_id, PlacementStage.sequence_order.desc())
+        )
+        result = await self.session.execute(stmt)
+        assignments = result.scalars().all()
+        latest_map: dict[UUID, StageAssignment] = {}
+        for a in assignments:
+            if a.student_user_id not in latest_map:
+                latest_map[a.student_user_id] = a
+        return latest_map
+
+    async def bulk_update_assignments_status(
+        self,
+        stage_id: UUID,
+        student_ids: Sequence[UUID],
+        status: str,
+        result_notes: str | None = None,
+    ) -> None:
+        if not student_ids:
+            return
+        from sqlalchemy import update
+
+        values: dict = {"status": status}
+        if result_notes is not None:
+            values["result_notes"] = result_notes
+
+        stmt = (
+            update(StageAssignment)
+            .where(
+                StageAssignment.stage_id == stage_id,
+                StageAssignment.student_user_id.in_(student_ids),
+            )
+            .values(**values)
+        )
+        await self.session.execute(stmt)
+
     async def upsert_assignments(self, stage_id: UUID, drive_id: UUID, student_ids: list[UUID], status: str = "SHORTLISTED") -> None:
         if not student_ids:
             return

@@ -1,8 +1,10 @@
+from datetime import datetime, timezone
 import logging
 from typing import Sequence
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from app.models.audit_log import AuditLog
 from app.models.drive_registration import DriveRegistration
@@ -14,6 +16,7 @@ from app.schemas.drive_registration import (
     CurrentStageSummary,
     DriveRegistrationResponse,
     DriveRegistrationWithStudentResponse,
+    RegistrationStageSummary,
     RegistrationStudentSummary,
     StudentApplicationResponse
 )
@@ -71,6 +74,14 @@ class RegistrationService:
         if drive.status != "REGISTRATION_OPEN":
             raise HTTPException(status_code=422, detail="Drive is not open for registration.")
 
+        if drive.registration_deadline:
+            now_utc = datetime.now(timezone.utc)
+            deadline = drive.registration_deadline
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            if now_utc > deadline:
+                raise HTTPException(status_code=422, detail="Registration deadline has passed.")
+
         # 2. Check for duplicate registration
         existing = await self.registration_repo.get_by_drive_and_student(drive_id, student_user_id)
         if existing:
@@ -107,8 +118,12 @@ class RegistrationService:
             new_state={"drive_id": str(drive_id), "status": "REGISTERED"}
         )
         
-        await self.registration_repo.session.commit()
-        await self.registration_repo.session.refresh(registration)
+        try:
+            await self.registration_repo.session.commit()
+            await self.registration_repo.session.refresh(registration)
+        except IntegrityError:
+            await self.registration_repo.session.rollback()
+            raise HTTPException(status_code=409, detail="Already registered for this drive.")
 
         # Post-commit notification dispatch: REGISTRATION_CONFIRMED
         if self.dispatcher:
@@ -133,13 +148,26 @@ class RegistrationService:
         return DriveRegistrationResponse.model_validate(registration)
 
 
-    async def list_drive_registrations(self, drive_id: UUID, skip: int = 0, limit: int = 20, status: str | None = None, branch: str | None = None) -> tuple[Sequence[DriveRegistrationWithStudentResponse], int]:
+    async def list_drive_registrations(
+        self,
+        drive_id: UUID,
+        skip: int = 0,
+        limit: int = 20,
+        status: str | None = None,
+        branch: str | None = None,
+        search: str | None = None,
+    ) -> tuple[Sequence[DriveRegistrationWithStudentResponse], int]:
         drive = await self.drive_repo.get_by_id(drive_id)
         if not drive:
             raise HTTPException(status_code=404, detail="Placement drive not found.")
             
-        rows, total = await self.registration_repo.list_by_drive_id(drive_id, skip, limit, status, branch)
+        rows, total = await self.registration_repo.list_by_drive_id(drive_id, skip, limit, status, branch, search)
         
+        student_user_ids = [reg.student_user_id for reg, _, _ in rows]
+        latest_assignments = await self.assignment_repo.get_latest_assignments_for_students_in_drive(
+            drive_id, student_user_ids
+        )
+
         result = []
         for reg, profile, user in rows:
             student_summary = RegistrationStudentSummary(
@@ -155,6 +183,20 @@ class RegistrationService:
                 gender=profile.gender,
                 avatar_url=profile.avatar_gcs_path
             )
+
+            stage_summary = None
+            assignment = latest_assignments.get(reg.student_user_id)
+            if assignment and assignment.stage:
+                stage_summary = RegistrationStageSummary(
+                    stage_id=assignment.stage_id,
+                    stage_name=assignment.stage.name,
+                    stage_type=assignment.stage.stage_type,
+                    sequence_order=assignment.stage.sequence_order,
+                    status=assignment.status,
+                    result_notes=assignment.result_notes,
+                    assigned_at=assignment.assigned_at,
+                )
+
             response = DriveRegistrationWithStudentResponse(
                 id=reg.id,
                 drive_id=reg.drive_id,
@@ -163,7 +205,8 @@ class RegistrationService:
                 status=reg.status,
                 registered_at=reg.registered_at,
                 updated_at=reg.updated_at,
-                student=student_summary
+                student=student_summary,
+                current_stage=stage_summary,
             )
             result.append(response)
             

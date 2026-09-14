@@ -43,6 +43,13 @@ from app.models.drive_registration import DriveRegistration
 from app.models.eligibility_criteria import EligibilityCriteria
 from app.models.notification import Notification
 from app.models.placement_drive import PlacementDrive
+from app.models.preparation import (
+    PreparationCategory,
+    PreparationMaterial,
+    PreparationRole,
+    PreparationRoleTopic,
+    PreparationTopic,
+)
 from app.models.student_profile import StudentProfile
 from app.models.user import User
 
@@ -169,6 +176,88 @@ async def seed_data():
                 prof = p_res.scalar_one_or_none()
                 seeded_students.append((u, prof))
         print("[OK] Created/verified 5 synthetic Students with academic profiles.")
+
+
+        # 2b. Pre-provisioned Student: 99230041249 (unactivated, awaiting first-time registration)
+        demo_roll = "99230041249"
+        demo_email = "99230041249@klu.ac.in"
+        res_prof = await session.execute(select(StudentProfile).where(StudentProfile.roll_number == demo_roll))
+        prof_demo = res_prof.scalar_one_or_none()
+        if not prof_demo:
+            res_u = await session.execute(select(User).where(User.email == demo_email))
+            u_demo = res_u.scalar_one_or_none()
+            if not u_demo:
+                u_demo = User(
+                    id=uuid4(),
+                    email=demo_email,
+                    password_hash=hash_password("temporary-placeholder"),
+                    full_name="Karthik Pyla",
+                    role="STUDENT",
+                    is_active=False,
+                    must_change_password=True,
+                )
+                session.add(u_demo)
+                await session.flush()
+            else:
+                u_demo.is_active = False
+                u_demo.password_hash = hash_password("temporary-placeholder")
+                session.add(u_demo)
+
+            prof_demo = StudentProfile(
+                id=uuid4(),
+                user_id=u_demo.id,
+                roll_number=demo_roll,
+                branch_code="CSE",
+                batch_year=2026,
+                cgpa=8.50,
+                active_backlogs=0,
+            )
+            session.add(prof_demo)
+            await session.commit()
+            print(f"[OK] Created pre-provisioned unactivated Student: {demo_roll} ({demo_email})")
+        else:
+            u_demo = await session.get(User, prof_demo.user_id)
+            if u_demo:
+                u_demo.email = demo_email
+                u_demo.is_active = False
+                u_demo.password_hash = hash_password("temporary-placeholder")
+                session.add(u_demo)
+                await session.commit()
+            print(f"[OK] Reset/verified pre-provisioned unactivated Student {demo_roll} ({demo_email})")
+
+        # 2c. Unactivated Student specifically for New User Registration testing
+        unreg_roll = "99230099999"
+        unreg_email = "student.unactivated@campusflow.edu"
+        res_unreg = await session.execute(select(User).where(User.email == unreg_email))
+        u_unreg = res_unreg.scalar_one_or_none()
+        if not u_unreg:
+            u_unreg = User(
+                id=uuid4(),
+                email=unreg_email,
+                password_hash=hash_password("temporary-placeholder"),
+                full_name="Unactivated Student",
+                role="STUDENT",
+                is_active=False,
+                must_change_password=True,
+            )
+            session.add(u_unreg)
+            await session.flush()
+
+            prof_unreg = StudentProfile(
+                id=uuid4(),
+                user_id=u_unreg.id,
+                roll_number=unreg_roll,
+                branch_code="CSE",
+                batch_year=2026,
+                cgpa=7.50,
+                active_backlogs=0,
+            )
+            session.add(prof_unreg)
+            await session.commit()
+            print(f"[OK] Created unactivated synthetic Student: {unreg_roll} ({unreg_email})")
+        else:
+            print(f"[OK] Verified unactivated synthetic Student {unreg_roll} ({unreg_email})")
+
 
         # 3. Companies
         company_name = "Acme Technologies (Synthetic)"
@@ -327,6 +416,133 @@ async def seed_data():
             session.add_all([n1, n2])
             await session.commit()
             print("[OK] Seeded sample notifications for Student 1.")
+
+        # 7. Preparation Hub Resources
+        # Roles
+        roles_data = [
+            ("SOFTWARE_DEVELOPER", "Software Developer", "Full-stack development, algorithms, system design, and coding rounds.", "code"),
+            ("DATA_ANALYST", "Data Analyst", "SQL queries, data visualization, business statistics, and dashboarding.", "chart-bar"),
+            ("AIML_ENGINEER", "AI / ML Engineer", "Machine learning fundamentals, deep learning, PyTorch, and NLP.", "cpu-chip"),
+            ("DEVOPS_ENGINEER", "DevOps Engineer", "CI/CD pipelines, Docker, Kubernetes, Linux, and Cloud Infrastructure.", "cloud"),
+        ]
+        seeded_roles: dict[str, PreparationRole] = {}
+        for code, name, desc, icon in roles_data:
+            res = await session.execute(select(PreparationRole).where(PreparationRole.code == code))
+            r = res.scalar_one_or_none()
+            if not r:
+                r = PreparationRole(
+                    id=uuid4(),
+                    code=code,
+                    name=name,
+                    description=desc,
+                    icon=icon,
+                    is_active=True,
+                )
+                session.add(r)
+                await session.flush()
+            seeded_roles[code] = r
+
+        # Categories
+        categories_data = [
+            ("APTITUDE", "Quantitative & Reasoning", "Mathematical ability, numerical shortcuts, and logical deductions.", "calculator", 1),
+            ("TECHNICAL", "Core Computer Science", "Data structures, algorithms, databases, OS, and software engineering.", "code", 2),
+            ("VERBAL", "Verbal Ability & English", "Reading comprehension, sentence correction, and vocabulary.", "book-open", 3),
+            ("INTERVIEW", "Interview Preparation", "Technical HR, behavioral questions, and resume walkthroughs.", "user-group", 4),
+        ]
+        seeded_cats: dict[str, PreparationCategory] = {}
+        for code, name, desc, icon, seq in categories_data:
+            res = await session.execute(select(PreparationCategory).where(PreparationCategory.code == code))
+            c = res.scalar_one_or_none()
+            if not c:
+                c = PreparationCategory(
+                    id=uuid4(),
+                    code=code,
+                    name=name,
+                    description=desc,
+                    icon=icon,
+                    sequence_order=seq,
+                )
+                session.add(c)
+                await session.flush()
+            seeded_cats[code] = c
+
+        # Topics
+        topics_data = [
+            ("APTITUDE", "Quantitative Mathematics", "quant-math", "Arithmetic, Algebra, Percentages, and Probability."),
+            ("APTITUDE", "Logical & Analytical Reasoning", "logical-reasoning", "Puzzles, Seating Arrangements, and Syllogisms."),
+            ("TECHNICAL", "Data Structures & Algorithms", "dsa", "Arrays, Linked Lists, Trees, Graphs, Dynamic Programming."),
+            ("TECHNICAL", "SQL & Database Management", "sql-dbms", "RDBMS principles, indexing, normalization, and complex queries."),
+            ("TECHNICAL", "Python Core & Advanced", "python-programming", "Python data models, generators, OOP, and asynchronous patterns."),
+            ("INTERVIEW", "Behavioral & HR Rounds", "behavioral-hr", "STAR method, common behavioral scenarios, and communication."),
+        ]
+        seeded_topics: dict[str, PreparationTopic] = {}
+        for cat_code, name, slug, desc in topics_data:
+            res = await session.execute(select(PreparationTopic).where(PreparationTopic.slug == slug))
+            t = res.scalar_one_or_none()
+            if not t:
+                t = PreparationTopic(
+                    id=uuid4(),
+                    category_id=seeded_cats[cat_code].id,
+                    name=name,
+                    slug=slug,
+                    description=desc,
+                )
+                session.add(t)
+                await session.flush()
+            seeded_topics[slug] = t
+
+        # Role-Topic Mappings
+        role_topic_links = [
+            ("SOFTWARE_DEVELOPER", "dsa", "CORE"),
+            ("SOFTWARE_DEVELOPER", "sql-dbms", "CORE"),
+            ("SOFTWARE_DEVELOPER", "python-programming", "CORE"),
+            ("SOFTWARE_DEVELOPER", "quant-math", "CORE"),
+            ("SOFTWARE_DEVELOPER", "behavioral-hr", "ELECTIVE"),
+            ("DATA_ANALYST", "sql-dbms", "CORE"),
+            ("DATA_ANALYST", "quant-math", "CORE"),
+            ("DATA_ANALYST", "python-programming", "ELECTIVE"),
+        ]
+        for role_code, topic_slug, imp in role_topic_links:
+            r = seeded_roles[role_code]
+            t = seeded_topics[topic_slug]
+            res = await session.execute(
+                select(PreparationRoleTopic).where(
+                    PreparationRoleTopic.role_id == r.id,
+                    PreparationRoleTopic.topic_id == t.id,
+                )
+            )
+            if not res.scalar_one_or_none():
+                session.add(PreparationRoleTopic(id=uuid4(), role_id=r.id, topic_id=t.id, importance=imp))
+
+        # Sample Approved Preparation Materials
+        materials_data = [
+            ("dsa", "SOFTWARE_DEVELOPER", "Complete DSA Roadmap & LeetCode 75 Patterns", "https://leetcode.com/discuss/general-discussion/460599/blind-75-leetcode-questions", "ARTICLE", "INTERMEDIATE", "LeetCode"),
+            ("quant-math", None, "Quantitative Aptitude Formulas & Short-Tricks Guide", "https://www.geeksforgeeks.org/quantitative-aptitude-for-placements/", "PDF", "BEGINNER", "GeeksforGeeks"),
+            ("sql-dbms", "SOFTWARE_DEVELOPER", "50 SQL Interview Questions with Interactive Queries", "https://leetcode.com/studyplan/top-sql-50/", "PRACTICE_QUESTIONS", "INTERMEDIATE", "LeetCode SQL"),
+            ("behavioral-hr", None, "Cracking the Behavioral Interview: STAR Method Mastery", "https://hbr.org/2021/04/how-to-answer-behavioral-interview-questions", "ARTICLE", "BEGINNER", "Harvard Business Review"),
+        ]
+        for topic_slug, role_code, title, url, mat_type, diff, source in materials_data:
+            res = await session.execute(select(PreparationMaterial).where(PreparationMaterial.title == title))
+            if not res.scalar_one_or_none():
+                session.add(
+                    PreparationMaterial(
+                        id=uuid4(),
+                        topic_id=seeded_topics[topic_slug].id,
+                        role_id=seeded_roles[role_code].id if role_code else None,
+                        title=title,
+                        description="Comprehensive placement preparation resource verified by the career cell.",
+                        url=url,
+                        material_type=mat_type,
+                        difficulty=diff,
+                        source=source,
+                        status="APPROVED",
+                        submitted_by_user_id=officer.id,
+                        reviewed_by_user_id=officer.id,
+                    )
+                )
+
+        await session.commit()
+        print("[OK] Seeded Preparation Hub roles, categories, topics, and verified materials.")
 
     await engine.dispose()
     print("\n[SUCCESS] Deterministic synthetic test environment seeding COMPLETE!")

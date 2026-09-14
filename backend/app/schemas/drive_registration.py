@@ -34,8 +34,19 @@ class RegistrationStudentSummary(BaseModel):
     avatar_url: str | None = None
 
 
+class RegistrationStageSummary(BaseModel):
+    stage_id: UUID
+    stage_name: str
+    stage_type: str
+    sequence_order: int
+    status: str
+    result_notes: str | None = None
+    assigned_at: datetime
+
+
 class DriveRegistrationWithStudentResponse(DriveRegistrationResponse):
     student: RegistrationStudentSummary
+    current_stage: RegistrationStageSummary | None = None
 
 
 class CurrentStageSummary(BaseModel):

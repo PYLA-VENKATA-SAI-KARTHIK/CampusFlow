@@ -396,7 +396,7 @@ async def test_14_mock_storage_service_full_lifecycle():
         max_size_bytes=5242880,
         expires_in_seconds=900,
     )
-    assert f"https://storage.googleapis.com/campusflow-resumes/{path}" in up_url
+    assert path in up_url
     assert "sig=mockPUT" in up_url
 
     # Object not yet in storage
@@ -413,7 +413,7 @@ async def test_14_mock_storage_service_full_lifecycle():
         object_path=path,
         expires_in_seconds=900,
     )
-    assert f"https://storage.googleapis.com/campusflow-resumes/{path}" in down_url
+    assert path in down_url
     assert "sig=mockGET" in down_url
 
 

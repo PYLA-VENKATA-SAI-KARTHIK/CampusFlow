@@ -58,6 +58,7 @@ class StudentProfileCreate(StudentProfileBase):
 
 
 class StudentProfileUpdate(BaseModel):
+    full_name: str | None = Field(None, min_length=1, max_length=255)
     phone_number: str | None = Field(None, max_length=15)
     personal_email: EmailStr | None = None
     gender: str | None = Field(None, max_length=10)

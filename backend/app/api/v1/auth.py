@@ -10,11 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.dependencies import UserContext, get_current_user, get_db
 from app.core.email import EmailService, create_email_service
+from app.core.exceptions import ActivationTokenInvalidError
 from app.core.limiter import limiter
 from app.schemas.auth import (
     ActivateRequest,
     LoginRequest,
     RefreshRequest,
+    RegisterResponse,
+    StudentRegisterRequest,
     TokenResponse,
 )
 from app.services.auth_service import AuthService
@@ -47,8 +50,9 @@ async def login(
     data: LoginRequest,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> TokenResponse:
-    """Authenticate and receive tokens."""
-    return await auth_service.authenticate(data.email, data.password)
+    """Authenticate and receive tokens using email or student registration number."""
+    identifier = data.identifier or data.email or ""
+    return await auth_service.authenticate(identifier, data.password)
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -69,6 +73,17 @@ async def logout(
     await auth_service.logout(request.refresh_token)
 
 
+@router.post("/register", response_model=RegisterResponse)
+@limiter.limit(get_settings().rate_limit_activate)
+async def register(
+    request: Request,
+    data: StudentRegisterRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> RegisterResponse:
+    """Register and activate a pre-created student account using registration number."""
+    return await auth_service.register_student(data.registration_number, data.password)
+
+
 @router.post("/activate", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(get_settings().rate_limit_activate)
 async def activate(
@@ -76,8 +91,14 @@ async def activate(
     data: ActivateRequest,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> None:
-    """Activate account using an email token."""
-    await auth_service.activate_account(data.activation_token, data.new_password)
+    """Activate account using an email token or student registration number."""
+    if data.registration_number:
+        await auth_service.register_student(data.registration_number, data.new_password)
+    elif data.activation_token:
+        await auth_service.activate_account(data.activation_token, data.new_password)
+    else:
+        raise ActivationTokenInvalidError()
+
 
 
 @router.get("/me")

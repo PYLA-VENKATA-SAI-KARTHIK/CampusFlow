@@ -19,6 +19,12 @@ class StageAssignmentUpdate(BaseModel):
     result_notes: str | None = None
 
 
+class BulkStageStatusRequest(BaseModel):
+    student_ids: list[UUID] = Field(..., min_length=1)
+    status: AssignmentStatus
+    result_notes: str | None = None
+
+
 class StageAssignmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

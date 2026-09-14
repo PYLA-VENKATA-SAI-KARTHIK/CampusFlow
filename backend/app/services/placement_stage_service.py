@@ -15,7 +15,11 @@ from app.repositories.placement_stage_repository import PlacementStageRepository
 from app.repositories.stage_assignment_repository import StageAssignmentRepository
 from app.repositories.drive_registration_repository import DriveRegistrationRepository
 from app.schemas.placement_stage import PlacementStageCreate, PlacementStageUpdate
-from app.schemas.stage_assignment import StageShortlistRequest, StageAssignmentUpdate
+from app.schemas.stage_assignment import (
+    BulkStageStatusRequest,
+    StageAssignmentUpdate,
+    StageShortlistRequest,
+)
 from app.services.notification_dispatcher import NotificationDispatcher
 
 logger = logging.getLogger(__name__)
@@ -170,17 +174,20 @@ class PlacementStageService:
         drive = await self._get_drive_or_404(drive_id)
         stage = await self._get_stage_or_404(drive_id, stage_id)
         
-        # Verify all students are registered
-        # list_by_drive_id returns tuples of (DriveRegistration, StudentProfile, User)
-        registration_rows, _ = await self.registration_repo.list_by_drive_id(drive_id, limit=100000)
-        registered_student_ids = {row[0].student_user_id for row in registration_rows}
+        # Deduplicate student IDs
+        unique_student_ids = list(dict.fromkeys(data.student_ids))
+
+        # Verify all students are registered using targeted SQL query
+        registered_student_ids = await self.registration_repo.get_registered_student_ids_for_drive_and_students(
+            drive_id, unique_student_ids
+        )
         
-        for student_id in data.student_ids:
+        for student_id in unique_student_ids:
             if student_id not in registered_student_ids:
                 raise HTTPException(status_code=422, detail=f"Student {student_id} is not registered for this drive")
 
         # Upsert assignments
-        await self.assignment_repo.upsert_assignments(stage_id, drive_id, data.student_ids, status="SHORTLISTED")
+        await self.assignment_repo.upsert_assignments(stage_id, drive_id, unique_student_ids, status="SHORTLISTED")
         
         # Audit Log
         audit = AuditLog(
@@ -188,7 +195,7 @@ class PlacementStageService:
             action="STUDENTS_SHORTLISTED",
             entity_type="STAGE",
             entity_id=stage.id,
-            new_state={"student_ids": [str(sid) for sid in data.student_ids]}
+            new_state={"student_ids": [str(sid) for sid in unique_student_ids]}
         )
         self.audit_repo.add(audit)
         await self.audit_repo.session.commit()
@@ -206,13 +213,67 @@ class PlacementStageService:
                         "reference_type": "PLACEMENT_STAGE",
                         "send_push": True,
                     }
-                    for student_id in data.student_ids
+                    for student_id in unique_student_ids
                 ]
                 await self.dispatcher.dispatch_bulk_notifications(items)
             except Exception as e:
                 logger.error("Failed to dispatch SHORTLISTED notifications for stage %s: %s", stage.id, e)
 
-        return {"message": f"{len(data.student_ids)} students shortlisted"}
+        return {"message": f"{len(unique_student_ids)} students shortlisted"}
+
+    async def bulk_update_status(
+        self,
+        drive_id: UUID,
+        stage_id: UUID,
+        data: BulkStageStatusRequest,
+        user_id: UUID,
+    ) -> dict:
+        await self._get_drive_or_404(drive_id)
+        stage = await self._get_stage_or_404(drive_id, stage_id)
+
+        # Deduplicate student IDs
+        unique_student_ids = list(dict.fromkeys(data.student_ids))
+
+        # Verify all students are assigned to this stage
+        assignments = await self.assignment_repo.list_assignments_for_stage_and_students(
+            stage_id, unique_student_ids
+        )
+        assigned_student_ids = {a.student_user_id for a in assignments}
+
+        for student_id in unique_student_ids:
+            if student_id not in assigned_student_ids:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Student {student_id} is not assigned to this stage",
+                )
+
+        # Bulk update in database
+        await self.assignment_repo.bulk_update_assignments_status(
+            stage_id=stage_id,
+            student_ids=unique_student_ids,
+            status=data.status,
+            result_notes=data.result_notes,
+        )
+
+        # Audit Log
+        audit = AuditLog(
+            performed_by_user_id=user_id,
+            action="STAGE_ASSIGNMENTS_BULK_UPDATED",
+            entity_type="STAGE",
+            entity_id=stage.id,
+            new_state={
+                "status": data.status,
+                "result_notes": data.result_notes,
+                "student_ids": [str(sid) for sid in unique_student_ids],
+                "count": len(unique_student_ids),
+            },
+        )
+        self.audit_repo.add(audit)
+        await self.audit_repo.session.commit()
+
+        return {
+            "message": f"{len(unique_student_ids)} candidate assignments updated to {data.status}"
+        }
 
     async def update_assignment(self, drive_id: UUID, stage_id: UUID, student_id: UUID, data: StageAssignmentUpdate, user_id: UUID):
         await self._get_stage_or_404(drive_id, stage_id)

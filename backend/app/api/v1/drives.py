@@ -36,7 +36,12 @@ from app.repositories.notification_repository import NotificationRepository
 from app.repositories.analytics_repository import AnalyticsRepository
 from app.schemas.analytics import DriveAnalyticsResponse
 from app.schemas.drive_registration import DriveRegistrationResponse, DriveRegistrationWithStudentResponse
-from app.schemas.stage_assignment import StageShortlistRequest, StageAssignmentUpdate, StageAssignmentResponse
+from app.schemas.stage_assignment import (
+    BulkStageStatusRequest,
+    StageAssignmentResponse,
+    StageAssignmentUpdate,
+    StageShortlistRequest,
+)
 from app.services.analytics_service import AnalyticsService
 
 from app.services.notification_dispatcher import NotificationDispatcher, get_notification_dispatcher
@@ -135,6 +140,16 @@ async def update_drive(
     return await service.update_drive(drive_id, data, current_user.user_id)
 
 
+@router.delete("/{drive_id}", response_model=dict)
+async def delete_drive(
+    drive_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementDriveService, Depends(get_drive_service)],
+) -> dict:
+    """Delete/archive a placement drive. Restricted to OFFICER and ADMIN."""
+    return await service.delete_drive(drive_id, current_user.user_id)
+
+
 @router.post("/{drive_id}/status", response_model=PlacementDriveResponse)
 async def update_drive_status(
     drive_id: UUID,
@@ -199,12 +214,15 @@ async def list_registrations(
     service: Annotated[RegistrationService, Depends(get_registration_service)],
     status: str | None = None,
     branch: str | None = None,
+    search: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> PaginatedResponse[DriveRegistrationWithStudentResponse]:
     """List registrations for a drive."""
     skip = (page - 1) * page_size
-    registrations, total = await service.list_drive_registrations(drive_id, skip=skip, limit=page_size, status=status, branch=branch)
+    registrations, total = await service.list_drive_registrations(
+        drive_id, skip=skip, limit=page_size, status=status, branch=branch, search=search
+    )
     
     return PaginatedResponse(
         items=list(registrations),
@@ -268,6 +286,18 @@ async def shortlist_students(
 ) -> dict:
     """Shortlist students for a stage."""
     return await service.shortlist_students(drive_id, stage_id, data, current_user.user_id)
+
+
+@router.post("/{drive_id}/stages/{stage_id}/bulk-status", response_model=dict)
+async def bulk_update_stage_status(
+    drive_id: UUID,
+    stage_id: UUID,
+    data: BulkStageStatusRequest,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[PlacementStageService, Depends(get_stage_service)],
+) -> dict:
+    """Bulk update candidate assignment statuses for a stage."""
+    return await service.bulk_update_status(drive_id, stage_id, data, current_user.user_id)
 
 
 @router.patch("/{drive_id}/stages/{stage_id}/assignments/{student_id}", response_model=StageAssignmentResponse)

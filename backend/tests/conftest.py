@@ -73,6 +73,7 @@ _assert_is_test_database(test_db_url)
 from sqlalchemy import text
 from sqlalchemy.pool import NullPool
 from app.db.base import Base
+import app.models  # noqa: F401
 from app.main import app
 from app.core.config import get_settings
 from app.core.security import init_jwt_manager

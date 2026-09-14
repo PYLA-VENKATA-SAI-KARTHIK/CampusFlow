@@ -576,3 +576,111 @@ async def test_student_download_resume_not_found(async_client: AsyncClient, auth
     # 15. Student without resume receives appropriate 404
     response = await async_client.get("/api/v1/students/me/resume-download-url", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_full_resume_upload_download_lifecycle(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    # 1. Request upload URL
+    upload_res = await async_client.get("/api/v1/students/me/resume-upload-url", headers=auth_users["student"])
+    assert upload_res.status_code == 200
+    data = upload_res.json()
+    upload_url = data["upload_url"]
+    object_path = data["object_path"]
+
+    # 2. Direct PUT binary PDF to storage endpoint
+    pdf_content = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< >>\n%%EOF"
+    upload_endpoint = upload_url.replace("http://localhost:8000", "")
+    put_res = await async_client.put(
+        upload_endpoint,
+        content=pdf_content,
+        headers={"Content-Type": "application/pdf"},
+    )
+    assert put_res.status_code == 200
+
+    # 3. Confirm resume upload
+    confirm_res = await async_client.post(
+        "/api/v1/students/me/resume-confirm",
+        headers=auth_users["student"],
+        json={"object_path": object_path},
+    )
+    assert confirm_res.status_code == 200
+    profile_data = confirm_res.json()
+    assert profile_data["resume_gcs_path"] == object_path
+    assert profile_data["resume_uploaded_at"] is not None
+
+    # 4. Download resume URL
+    down_res = await async_client.get("/api/v1/students/me/resume-download-url", headers=auth_users["student"])
+    assert down_res.status_code == 200
+    down_url = down_res.json()["url"]
+    down_endpoint = down_url.replace("http://localhost:8000", "")
+
+    # 5. Fetch binary document
+    get_res = await async_client.get(down_endpoint)
+    assert get_res.status_code == 200
+    assert get_res.content == pdf_content
+    assert get_res.headers["content-type"] == "application/pdf"
+
+
+@pytest.mark.asyncio
+async def test_storage_upload_invalid_file_type(async_client: AsyncClient):
+    # Non-PDF content rejected with 422
+    put_res = await async_client.put(
+        "/api/v1/storage/upload/resumes/invalid/test.pdf",
+        content=b"Plain text not a valid PDF header",
+        headers={"Content-Type": "application/pdf"},
+    )
+    assert put_res.status_code == 422
+    assert "valid PDF document" in put_res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_storage_upload_file_exceeds_size(async_client: AsyncClient):
+    # Over 5MB rejected with 422
+    large_content = b"%PDF-" + b"0" * (5 * 1024 * 1024 + 1024)
+    put_res = await async_client.put(
+        "/api/v1/storage/upload/resumes/invalid/large.pdf",
+        content=large_content,
+        headers={"Content-Type": "application/pdf"},
+    )
+    assert put_res.status_code == 422
+    assert "maximum allowed size" in put_res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_resume_replacement_updates_reference(async_client: AsyncClient, auth_users: dict, test_profiles: dict):
+    # Upload first resume
+    up1 = await async_client.get("/api/v1/students/me/resume-upload-url", headers=auth_users["student"])
+    path1 = up1.json()["object_path"]
+    put1 = await async_client.put(
+        up1.json()["upload_url"].replace("http://localhost:8000", ""),
+        content=b"%PDF-1.4\nResume 1 content\n%%EOF",
+        headers={"Content-Type": "application/pdf"},
+    )
+    assert put1.status_code == 200
+    conf1 = await async_client.post(
+        "/api/v1/students/me/resume-confirm",
+        headers=auth_users["student"],
+        json={"object_path": path1},
+    )
+    assert conf1.status_code == 200
+    assert conf1.json()["resume_gcs_path"] == path1
+
+    # Upload second resume (replacement)
+    up2 = await async_client.get("/api/v1/students/me/resume-upload-url", headers=auth_users["student"])
+    path2 = up2.json()["object_path"]
+    assert path1 != path2
+    put2 = await async_client.put(
+        up2.json()["upload_url"].replace("http://localhost:8000", ""),
+        content=b"%PDF-1.4\nResume 2 replacement content\n%%EOF",
+        headers={"Content-Type": "application/pdf"},
+    )
+    assert put2.status_code == 200
+    conf2 = await async_client.post(
+        "/api/v1/students/me/resume-confirm",
+        headers=auth_users["student"],
+        json={"object_path": path2},
+    )
+    assert conf2.status_code == 200
+    assert conf2.json()["resume_gcs_path"] == path2
+    assert conf2.json()["resume_gcs_path"] != path1
+

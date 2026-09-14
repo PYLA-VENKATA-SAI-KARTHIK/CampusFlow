@@ -80,6 +80,7 @@ class StudentProfileService:
             raise
 
         old_state = {
+            "full_name": profile.user.full_name if profile.user else None,
             "phone_number": profile.phone_number,
             "personal_email": profile.personal_email,
             "gender": profile.gender,
@@ -104,13 +105,19 @@ class StudentProfileService:
                     detail="Cannot modify protected academic or system fields."
                 )
 
+        # Update full_name on User model if provided
+        if data.full_name is not None and data.full_name.strip() and profile.user:
+            profile.user.full_name = data.full_name.strip()
+            self.profile_repo.session.add(profile.user)
+
         # Only update fields explicitly defined in the schema (which excludes model_extra)
         update_data = data.model_dump(exclude_unset=True, exclude_none=False)
         for key, value in update_data.items():
-            if hasattr(profile, key):
+            if key != "full_name" and hasattr(profile, key):
                 setattr(profile, key, value)
 
         new_state = {
+            "full_name": profile.user.full_name if profile.user else None,
             "phone_number": profile.phone_number,
             "personal_email": profile.personal_email,
             "gender": profile.gender,

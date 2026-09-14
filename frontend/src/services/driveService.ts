@@ -10,6 +10,8 @@ import type {
   Company,
   CompanyCreate,
   Branch,
+  DriveRegistrationWithStudent,
+  BulkStageStatusRequest,
 } from '../types/drive';
 
 export const driveService = {
@@ -45,6 +47,11 @@ export const driveService = {
     return res.data;
   },
 
+  async deleteDrive(driveId: string): Promise<{ message: string; id: string; status: string }> {
+    const res = await apiClient.delete(`/drives/${driveId}`);
+    return res.data;
+  },
+
   // Eligibility & Registration
   async checkEligibility(driveId: string): Promise<EligibilityCheckResponse> {
     const res = await apiClient.get(`/drives/${driveId}/eligibility-check`);
@@ -56,7 +63,21 @@ export const driveService = {
     return res.data;
   },
 
-  // Stages
+  async listRegistrations(
+    driveId: string,
+    params?: { search?: string; branch?: string; status?: string; page?: number; page_size?: number }
+  ): Promise<{
+    items: DriveRegistrationWithStudent[];
+    total: number;
+    page: number;
+    page_size: number;
+    has_next: boolean;
+  }> {
+    const res = await apiClient.get(`/drives/${driveId}/registrations`, { params });
+    return res.data;
+  },
+
+  // Stages & Assignments
   async listStages(driveId: string): Promise<PlacementStage[]> {
     const res = await apiClient.get(`/drives/${driveId}/stages`);
     return res.data;
@@ -65,6 +86,37 @@ export const driveService = {
   async createStage(driveId: string, data: PlacementStageCreate): Promise<PlacementStage> {
     const res = await apiClient.post(`/drives/${driveId}/stages`, data);
     return res.data;
+  },
+
+  async shortlistStudents(
+    driveId: string,
+    stageId: string,
+    studentIds: string[]
+  ): Promise<{ message: string }> {
+    const res = await apiClient.post(`/drives/${driveId}/stages/${stageId}/shortlist`, {
+      student_ids: studentIds,
+    });
+    return res.data;
+  },
+
+  async bulkUpdateStageStatus(
+    driveId: string,
+    stageId: string,
+    data: BulkStageStatusRequest
+  ): Promise<{ message: string }> {
+    const res = await apiClient.post(`/drives/${driveId}/stages/${stageId}/bulk-status`, data);
+    return res.data;
+  },
+
+  async publishStageResults(driveId: string, stageId: string): Promise<{ message: string }> {
+    const res = await apiClient.post(`/drives/${driveId}/stages/${stageId}/publish-results`);
+    return res.data;
+  },
+
+  // Officer Student Access
+  async getStudentResumeDownloadUrl(studentProfileId: string): Promise<string> {
+    const res = await apiClient.get(`/officers/students/${studentProfileId}/resume-download-url`);
+    return res.data.url;
   },
 
   // Companies

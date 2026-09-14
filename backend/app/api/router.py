@@ -4,6 +4,7 @@ API Routers.
 from fastapi import APIRouter
 
 from app.api.v1.admin import router as admin_router
+from app.api.v1.admin_student_import import router as admin_student_import_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.branches import router as branches_router
 from app.api.v1.companies import router as companies_router
@@ -15,6 +16,8 @@ from app.api.v1.officers import router as officers_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.preparation import router as preparation_router
 from app.api.v1.assessments import router as assessments_router
+
+from app.api.v1.storage import router as storage_router
 
 api_v1_router = APIRouter()
 
@@ -31,6 +34,8 @@ api_v1_router.include_router(assessments_router, prefix="/assessments", tags=["A
 api_v1_router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
 api_v1_router.include_router(analytics_router, prefix="/admin/analytics", tags=["Analytics"])
 api_v1_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
+api_v1_router.include_router(admin_student_import_router, tags=["Student Master Import"])
+api_v1_router.include_router(storage_router, prefix="/storage", tags=["Storage"])
 
 
 

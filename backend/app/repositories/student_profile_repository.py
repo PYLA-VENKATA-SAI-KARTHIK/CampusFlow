@@ -42,6 +42,21 @@ class StudentProfileRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_roll_number(self, roll_number: str) -> StudentProfile | None:
+        """Find a student profile by roll number / registration number (case-insensitive, trimmed)."""
+        clean = roll_number.strip().lower()
+        stmt = (
+            select(StudentProfile)
+            .options(
+                selectinload(StudentProfile.user),
+                selectinload(StudentProfile.branch),
+            )
+            .where(func.lower(StudentProfile.roll_number) == clean)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+
     async def list_students(
         self, 
         skip: int = 0, 

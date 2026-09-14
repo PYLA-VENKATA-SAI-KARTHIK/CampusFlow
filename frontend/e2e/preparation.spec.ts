@@ -200,10 +200,11 @@ test.describe('Placement Preparation Hub (Phase 5.1)', () => {
 
     // Open Suggestion modal
     await page.locator('button', { hasText: 'Suggest a Material' }).click();
-    await expect(page.locator('h3', { hasText: 'Suggest a Placement Material' })).toBeVisible();
+    const modal = page.getByRole('dialog');
+    await expect(modal).toBeVisible();
+    await expect(modal.getByText('Suggest a Placement Material')).toBeVisible();
 
     // Fill form inside modal
-    const modal = page.locator('.fixed');
     await modal.locator('select').first().selectOption({ label: 'Python Programming' });
     await modal.locator('input[placeholder*="Binary Search"]').fill('Advanced Dynamic Programming Masterclass');
     await modal.locator('input[type="url"]').fill('https://example.com/dp-guide');
@@ -329,5 +330,98 @@ test.describe('Placement Preparation Hub (Phase 5.1)', () => {
 
     // Modal closes
     await expect(page.locator('h3', { hasText: 'Review Suggestion' })).not.toBeVisible();
+  });
+
+  test('3. Officer directly publishes preparation material and verifies immediate visibility in Explore Library', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'campusflow-auth-storage',
+        JSON.stringify({
+          state: {
+            accessToken: 'mock-jwt-token-officer',
+            refreshToken: 'mock-refresh-token-officer',
+            user: {
+              id: '99999999-9999-9999-9999-999999999999',
+              email: 'officer@campusflow.edu',
+              full_name: 'Placement Officer Jane',
+              role: 'OFFICER',
+              is_active: true,
+            },
+            isAuthenticated: true,
+          },
+          version: 0,
+        })
+      );
+    });
+
+    const newMaterial = {
+      id: 'm-direct-4444-4444',
+      topic_id: 't2222222-2222-2222-2222-222222222222',
+      role_id: null,
+      title: 'Full-Stack System Design Cheat Sheet',
+      description: 'System design fundamentals for campus placement rounds.',
+      url: 'https://example.com/system-design',
+      material_type: 'PDF',
+      difficulty: 'INTERMEDIATE',
+      source: 'TPO Career Cell',
+      status: 'APPROVED',
+      submitted_by_user_id: '99999999-9999-9999-9999-999999999999',
+      reviewed_by_user_id: '99999999-9999-9999-9999-999999999999',
+      review_notes: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    await page.route('**/api/v1/preparation/roles', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockRoles) });
+    });
+
+    await page.route('**/api/v1/preparation/categories', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockCategories) });
+    });
+
+    let currentMaterials: any[] = [...mockMaterials];
+    await page.route('**/api/v1/preparation/materials*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: currentMaterials,
+          total: currentMaterials.length,
+          page: 1,
+          page_size: 50,
+          has_next: false,
+        }),
+      });
+    });
+
+    await page.route('**/api/v1/preparation/officers/materials', async (route) => {
+      currentMaterials = [newMaterial, ...currentMaterials];
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(newMaterial),
+      });
+    });
+
+    await page.goto('/preparation');
+
+    // Click Publish New Material
+    await page.locator('button', { hasText: 'Publish New Material' }).click();
+    const modal = page.getByRole('dialog');
+    await expect(modal).toBeVisible();
+    await expect(modal.getByText('Publish Official Material')).toBeVisible();
+
+    // Fill publishing form
+    await modal.locator('select').first().selectOption({ label: 'Python Programming' });
+    await modal.locator('input[placeholder*="Binary Search"]').fill('Full-Stack System Design Cheat Sheet');
+    await modal.locator('input[type="url"]').fill('https://example.com/system-design');
+
+    // Submit
+    await modal.locator('button[type="submit"]', { hasText: 'Publish Material' }).click();
+
+    // Verify modal closes and new material appears in Explore Library
+    await expect(modal).not.toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Full-Stack System Design Cheat Sheet')).toBeVisible();
   });
 });

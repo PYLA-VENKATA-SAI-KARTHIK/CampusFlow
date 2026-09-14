@@ -330,3 +330,204 @@ async def test_rbac_registration(
     # Student cannot list registrations
     r_list = await async_client.get(f"/api/v1/drives/{drive_id}/registrations", headers=student_headers)
     assert r_list.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_officer_list_registrations_search_by_name_roll_email(
+    async_client: AsyncClient,
+    auth_users: dict,
+    test_company: str,
+):
+    officer_headers = auth_users["officer"]
+    student_headers = auth_users["student"]
+
+    drive_data = {
+        "company_id": test_company,
+        "title": "Search Test Drive",
+        "job_role": "SDE",
+        "registration_deadline": "2026-12-31T23:59:59Z",
+        "eligibility_criteria": {},
+    }
+    r = await async_client.post("/api/v1/drives", json=drive_data, headers=officer_headers)
+    drive_id = r.json()["id"]
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "PUBLISHED"}, headers=officer_headers)
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "REGISTRATION_OPEN"}, headers=officer_headers)
+
+    # Register student (full_name: "Reg Student", roll_number: "REG123", email: "reg_student@campusflow.com")
+    await async_client.post(f"/api/v1/drives/{drive_id}/register", headers=student_headers)
+
+    # 1. Search by name substring
+    r_name = await async_client.get(f"/api/v1/drives/{drive_id}/registrations?search=student", headers=officer_headers)
+    assert r_name.status_code == 200
+    assert r_name.json()["total"] == 1
+    assert r_name.json()["items"][0]["student"]["full_name"] == "Reg Student"
+
+    # 2. Search by roll number
+    r_roll = await async_client.get(f"/api/v1/drives/{drive_id}/registrations?search=REG123", headers=officer_headers)
+    assert r_roll.status_code == 200
+    assert r_roll.json()["total"] == 1
+
+    # 3. Search by email
+    r_email = await async_client.get(f"/api/v1/drives/{drive_id}/registrations?search=reg_student", headers=officer_headers)
+    assert r_email.status_code == 200
+    assert r_email.json()["total"] == 1
+
+    # 4. Search combined with branch and status
+    r_comb = await async_client.get(
+        f"/api/v1/drives/{drive_id}/registrations?search=student&branch=CSE&status=REGISTERED",
+        headers=officer_headers,
+    )
+    assert r_comb.status_code == 200
+    assert r_comb.json()["total"] == 1
+
+    # 5. Search with mismatch
+    r_none = await async_client.get(f"/api/v1/drives/{drive_id}/registrations?search=nonexistent", headers=officer_headers)
+    assert r_none.status_code == 200
+    assert r_none.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_officer_list_registrations_current_stage_enrichment(
+    async_client: AsyncClient,
+    auth_users: dict,
+    test_company: str,
+):
+    """Registration list enriches each student with their current stage assignment."""
+    officer_headers = auth_users["officer"]
+    student_headers = auth_users["student"]
+
+    drive_data = {
+        "company_id": test_company,
+        "title": "Stage Enrichment Drive",
+        "job_role": "SDE",
+        "registration_deadline": "2026-12-31T23:59:59Z",
+        "eligibility_criteria": {},
+    }
+    r = await async_client.post("/api/v1/drives", json=drive_data, headers=officer_headers)
+    drive_id = r.json()["id"]
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "PUBLISHED"}, headers=officer_headers)
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "REGISTRATION_OPEN"}, headers=officer_headers)
+
+    # Register
+    await async_client.post(f"/api/v1/drives/{drive_id}/register", headers=student_headers)
+
+    # Before stage creation/assignment: current_stage is None
+    r_list = await async_client.get(f"/api/v1/drives/{drive_id}/registrations", headers=officer_headers)
+    assert r_list.status_code == 200
+    assert r_list.json()["items"][0]["current_stage"] is None
+
+    # Create & publish stage
+    r_stage = await async_client.post(
+        f"/api/v1/drives/{drive_id}/stages",
+        json={"name": "Coding Round", "stage_type": "CODING", "sequence_order": 1},
+        headers=officer_headers,
+    )
+    stage_id = r_stage.json()["id"]
+
+    # Shortlist student
+    student_id = str(auth_users["student_id"])
+    await async_client.post(
+        f"/api/v1/drives/{drive_id}/stages/{stage_id}/shortlist",
+        json={"student_ids": [student_id]},
+        headers=officer_headers,
+    )
+
+    # After shortlisting: current_stage is populated
+    r_list2 = await async_client.get(f"/api/v1/drives/{drive_id}/registrations", headers=officer_headers)
+    assert r_list2.status_code == 200
+    stage_info = r_list2.json()["items"][0]["current_stage"]
+    assert stage_info is not None
+    assert stage_info["stage_id"] == stage_id
+    assert stage_info["stage_name"] == "Coding Round"
+    assert stage_info["status"] == "SHORTLISTED"
+
+
+@pytest.mark.asyncio
+async def test_student_register_fails_published_status(
+    async_client: AsyncClient,
+    auth_users: dict,
+    test_company: str,
+):
+    """PUBLISHED drive rejects student registration with 422."""
+    officer_headers = auth_users["officer"]
+    student_headers = auth_users["student"]
+
+    drive_data = {
+        "company_id": test_company,
+        "title": "Published Only Drive",
+        "job_role": "Backend Engineer",
+        "registration_deadline": "2026-12-31T23:59:59Z",
+        "eligibility_criteria": {
+            "eligible_branches": ["CSE"],
+        },
+    }
+    r = await async_client.post("/api/v1/drives", json=drive_data, headers=officer_headers)
+    assert r.status_code == 201
+    drive_id = r.json()["id"]
+
+    # Transition to PUBLISHED
+    r_pub = await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "PUBLISHED"}, headers=officer_headers)
+    assert r_pub.status_code == 200
+    assert r_pub.json()["status"] == "PUBLISHED"
+
+    # Attempt to register while in PUBLISHED state
+    r_reg = await async_client.post(f"/api/v1/drives/{drive_id}/register", headers=student_headers)
+    assert r_reg.status_code == 422
+    assert "Drive is not open for registration" in r_reg.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_student_register_fails_registration_closed_status(
+    async_client: AsyncClient,
+    auth_users: dict,
+    test_company: str,
+):
+    """REGISTRATION_CLOSED drive rejects registration with 422."""
+    officer_headers = auth_users["officer"]
+    student_headers = auth_users["student"]
+
+    drive_data = {
+        "company_id": test_company,
+        "title": "Closed Reg Drive",
+        "job_role": "Frontend Engineer",
+        "registration_deadline": "2026-12-31T23:59:59Z",
+        "eligibility_criteria": {},
+    }
+    r = await async_client.post("/api/v1/drives", json=drive_data, headers=officer_headers)
+    drive_id = r.json()["id"]
+
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "PUBLISHED"}, headers=officer_headers)
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "REGISTRATION_OPEN"}, headers=officer_headers)
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "REGISTRATION_CLOSED"}, headers=officer_headers)
+
+    r_reg = await async_client.post(f"/api/v1/drives/{drive_id}/register", headers=student_headers)
+    assert r_reg.status_code == 422
+    assert "Drive is not open for registration" in r_reg.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_student_register_fails_past_deadline(
+    async_client: AsyncClient,
+    auth_users: dict,
+    test_company: str,
+):
+    """Registration fails if registration_deadline is in the past."""
+    officer_headers = auth_users["officer"]
+    student_headers = auth_users["student"]
+
+    drive_data = {
+        "company_id": test_company,
+        "title": "Past Deadline Drive",
+        "job_role": "DevOps Engineer",
+        "registration_deadline": "2020-01-01T00:00:00Z",
+        "eligibility_criteria": {},
+    }
+    r = await async_client.post("/api/v1/drives", json=drive_data, headers=officer_headers)
+    drive_id = r.json()["id"]
+
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "PUBLISHED"}, headers=officer_headers)
+    await async_client.post(f"/api/v1/drives/{drive_id}/status", json={"status": "REGISTRATION_OPEN"}, headers=officer_headers)
+
+    r_reg = await async_client.post(f"/api/v1/drives/{drive_id}/register", headers=student_headers)
+    assert r_reg.status_code == 422
+    assert "Registration deadline has passed" in r_reg.json()["detail"]

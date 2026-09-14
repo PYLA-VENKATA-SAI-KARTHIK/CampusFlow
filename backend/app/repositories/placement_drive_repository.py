@@ -36,6 +36,8 @@ class PlacementDriveRepository:
         count_stmt = select(func.count(PlacementDrive.id))
         if status:
             count_stmt = count_stmt.where(PlacementDrive.status == status)
+        else:
+            count_stmt = count_stmt.where(PlacementDrive.status != "ARCHIVED")
         if exclude_draft:
             count_stmt = count_stmt.where(PlacementDrive.status != "DRAFT")
 
@@ -52,6 +54,8 @@ class PlacementDriveRepository:
         
         if status:
             stmt = stmt.where(PlacementDrive.status == status)
+        else:
+            stmt = stmt.where(PlacementDrive.status != "ARCHIVED")
         if exclude_draft:
             stmt = stmt.where(PlacementDrive.status != "DRAFT")
 

@@ -126,7 +126,7 @@ class PlacementDriveService:
 
     async def get_drive(self, drive_id: UUID, current_user_id: UUID | None = None, is_student: bool = False) -> PlacementDrive:
         drive = await self.drive_repo.get_by_id(drive_id)
-        if not drive:
+        if not drive or (is_student and drive.status in ("DRAFT", "ARCHIVED")):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Placement drive with id '{drive_id}' not found."
@@ -148,11 +148,39 @@ class PlacementDriveService:
     async def list_drives(
         self, status: str | None = None, skip: int = 0, limit: int = 20, is_student: bool = False
     ) -> tuple[Sequence[PlacementDrive], int]:
-        if is_student and status == "DRAFT":
+        if is_student and status in ("DRAFT", "ARCHIVED"):
             return [], 0
         return await self.drive_repo.list_drives(
             status=status, skip=skip, limit=limit, exclude_draft=is_student
         )
+
+    async def delete_drive(self, drive_id: UUID, user_id: UUID | str) -> dict:
+        if isinstance(user_id, str):
+            user_id = UUID(user_id)
+
+        drive = await self.drive_repo.get_by_id(drive_id)
+        if not drive:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Placement drive with id '{drive_id}' not found."
+            )
+
+        if drive.status == "ARCHIVED":
+            return {"message": "Placement drive is already archived", "id": str(drive.id), "status": "ARCHIVED"}
+
+        old_state = {"status": drive.status, "title": drive.title}
+        drive.status = "ARCHIVED"
+
+        self._log_audit(
+            user_id=user_id,
+            action="DRIVE_DELETED",
+            entity_id=drive.id,
+            old_state=old_state,
+            new_state={"status": "ARCHIVED", "title": drive.title}
+        )
+
+        await self.drive_repo.session.commit()
+        return {"message": "Placement drive deleted successfully", "id": str(drive.id), "status": "ARCHIVED"}
 
     async def update_drive(
         self, drive_id: UUID, data: PlacementDriveUpdate, user_id: UUID | str

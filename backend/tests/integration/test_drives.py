@@ -342,6 +342,14 @@ async def test_eligibility_all_pass(
     assert len(data["reasons"]) == 0
     assert data["drive_id"] == drive_id
 
+    # Publish drive so student can view it
+    pub_resp = await async_client.post(
+        f"/api/v1/drives/{drive_id}/status",
+        json={"status": "PUBLISHED"},
+        headers=auth_users["officer"],
+    )
+    assert pub_resp.status_code == 200
+
     # Test automatic my_eligibility population
     get_resp = await async_client.get(
         f"/api/v1/drives/{drive_id}",

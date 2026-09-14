@@ -3,6 +3,20 @@ import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '../services/apiClient';
+import {
+  PageHeader,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  Badge,
+  Button,
+  Label,
+  Alert,
+  LoadingSpinner,
+} from '../components/ui';
 
 interface ProfileData {
   id?: string;
@@ -23,6 +37,13 @@ interface ProfileData {
   resume_gcs_path?: string | null;
   resume_uploaded_at?: string | null;
   avatar_gcs_path?: string | null;
+  user?: {
+    id: string;
+    email: string;
+    full_name: string;
+    role: string;
+    is_active: boolean;
+  } | null;
 }
 
 export const MyProfilePage: React.FC = () => {
@@ -36,6 +57,7 @@ export const MyProfilePage: React.FC = () => {
 
   // SECTION 1: Personal details edit state
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [gender, setGender] = useState('');
@@ -64,6 +86,7 @@ export const MyProfilePage: React.FC = () => {
   const [downloadingResume, setDownloadingResume] = useState(false);
 
   const populateFormFields = (data: ProfileData) => {
+    setFullName(data.user?.full_name || user?.full_name || '');
     setPhone(data.phone_number || '');
     setPersonalEmail(data.personal_email || '');
     setGender(data.gender || '');
@@ -80,6 +103,9 @@ export const MyProfilePage: React.FC = () => {
     try {
       const res = await apiClient.get('/students/me');
       setProfile(res.data);
+      if (res.data.user) {
+        useAuthStore.getState().updateUser({ full_name: res.data.user.full_name });
+      }
       populateFormFields(res.data);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load profile data.');
@@ -93,8 +119,7 @@ export const MyProfilePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // If navigated to /resume or hash is #resume, scroll to resume section
-    if (location.pathname === '/resume' || location.hash === '#resume') {
+    if (location.pathname === '/resume' || location.hash === '#resume-section' || location.hash === '#resume') {
       setTimeout(() => {
         resumeSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
@@ -104,15 +129,23 @@ export const MyProfilePage: React.FC = () => {
   // Handle Personal Details Save
   const handleSavePersonal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!fullName.trim()) {
+      setPersonalMessage({ type: 'error', text: 'Student name cannot be empty.' });
+      return;
+    }
     setSavingPersonal(true);
     setPersonalMessage(null);
     try {
       const res = await apiClient.patch('/students/me', {
+        full_name: fullName.trim(),
         phone_number: phone.trim() || null,
         personal_email: personalEmail.trim() || null,
         gender: gender || null,
       });
       setProfile(res.data);
+      if (res.data.user) {
+        useAuthStore.getState().updateUser({ full_name: res.data.user.full_name });
+      }
       populateFormFields(res.data);
       setIsEditingPersonal(false);
       setPersonalMessage({ type: 'success', text: 'Personal details updated successfully.' });
@@ -129,9 +162,12 @@ export const MyProfilePage: React.FC = () => {
 
   const handleCancelPersonal = () => {
     if (profile) {
+      setFullName(profile.user?.full_name || user?.full_name || '');
       setPhone(profile.phone_number || '');
       setPersonalEmail(profile.personal_email || '');
       setGender(profile.gender || '');
+    } else if (user) {
+      setFullName(user.full_name || '');
     }
     setIsEditingPersonal(false);
     setPersonalMessage(null);
@@ -142,7 +178,6 @@ export const MyProfilePage: React.FC = () => {
     e.preventDefault();
     setAcademicMessage(null);
 
-    // Client-side range validation
     const validateMark = (val: string, name: string): number | null | false => {
       if (!val.trim()) return null;
       const num = parseFloat(val);
@@ -274,7 +309,13 @@ export const MyProfilePage: React.FC = () => {
       const urlRes = await apiClient.get('/students/me/resume-upload-url');
       const { upload_url, object_path } = urlRes.data;
 
-      await axios.put(upload_url, selectedFile, {
+      let targetUrl = upload_url;
+      if (targetUrl.startsWith('/')) {
+        const baseURL = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
+        targetUrl = `${baseURL}${targetUrl}`;
+      }
+
+      await axios.put(targetUrl, selectedFile, {
         headers: {
           'Content-Type': 'application/pdf',
         },
@@ -289,9 +330,17 @@ export const MyProfilePage: React.FC = () => {
       setResumeMessage({ type: 'success', text: 'Resume uploaded and verified successfully!' });
       setTimeout(() => setResumeMessage(null), 5000);
     } catch (err: any) {
+      let errorMsg = 'Failed to upload resume. Please try again.';
+      if (err.response?.data?.detail) {
+        errorMsg = err.response.data.detail;
+      } else if (err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
+        errorMsg = 'Network connection failed while uploading resume. Please check your connection and try again.';
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
       setResumeMessage({
         type: 'error',
-        text: err.response?.data?.detail || err.message || 'Failed to upload resume. Please try again.',
+        text: errorMsg,
       });
     } finally {
       setUploadingResume(false);
@@ -303,10 +352,18 @@ export const MyProfilePage: React.FC = () => {
     try {
       const res = await apiClient.get('/students/me/resume-download-url');
       if (res.data.url) {
-        window.open(res.data.url, '_blank', 'noopener,noreferrer');
+        let downloadUrl = res.data.url;
+        if (downloadUrl.startsWith('/')) {
+          const baseURL = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
+          downloadUrl = `${baseURL}${downloadUrl}`;
+        }
+        window.open(downloadUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'No resume available to download.');
+      setResumeMessage({
+        type: 'error',
+        text: err.response?.data?.detail || 'No resume available to download.',
+      });
     } finally {
       setDownloadingResume(false);
     }
@@ -320,65 +377,68 @@ export const MyProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">
+    <div className="space-y-8 animate-fade-in max-w-5xl mx-auto pb-12">
       {/* PAGE HEADER */}
-      <div className="border-b border-slate-200 pb-5">
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-          My Profile & Career Credentials
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Manage your personal contact details, review institutional academic credentials, and maintain your verified resume & portfolio.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Placement Identity"
+        title="My Profile & Career Credentials"
+        description="Manage your personal contact details, review institutional academic credentials, and maintain your verified resume & portfolio."
+      />
 
       {loading ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent mb-3" />
-          <p className="text-xs text-slate-500 font-medium">Loading profile information...</p>
-        </div>
+        <Card className="p-12 text-center">
+          <LoadingSpinner size="lg" label="Loading profile information..." />
+        </Card>
       ) : error ? (
-        <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-center">
-          <p className="text-xs text-red-700 font-semibold">{error}</p>
-        </div>
+        <Alert variant="danger">
+          <span className="font-semibold">{error}</span>
+        </Alert>
       ) : (
         <div className="space-y-8">
-          {/* USER SUMMARY CARD */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-extrabold text-2xl shadow-md shadow-indigo-600/30 border border-indigo-400/30">
-                {user?.full_name?.charAt(0).toUpperCase() || 'S'}
-              </div>
-              <div>
-                <div className="flex items-center space-x-2.5">
-                  <h2 className="text-lg font-bold text-white">{user?.full_name}</h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                    Student
-                  </span>
+          {/* USER HERO / IDENTITY CARD */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 md:p-8 text-white shadow-xl border border-indigo-900/40">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-2xl shadow-lg shadow-indigo-600/30 border border-indigo-400/30">
+                  {user?.full_name?.charAt(0).toUpperCase() || 'S'}
                 </div>
-                <p className="text-xs text-slate-300 font-mono mt-0.5">{user?.email}</p>
-                <p className="text-xs text-indigo-300 mt-1">
-                  Roll No: <span className="font-mono font-bold text-white">{profile?.roll_number || '—'}</span> &bull; {profile?.branch_code || '—'} &bull; Batch of {profile?.batch_year || '—'}
-                </p>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-xl font-bold text-white tracking-tight">{user?.full_name}</h2>
+                    <Badge variant="success" size="sm" dot>
+                      STUDENT
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-300 font-mono mt-1">{user?.email}</p>
+                  <p className="text-xs text-indigo-200/90 mt-1 flex flex-wrap items-center gap-1.5 font-medium">
+                    <span>Roll No: <strong className="font-mono text-white">{profile?.roll_number || '—'}</strong></span>
+                    <span>&bull;</span>
+                    <span>{profile?.branch_code || '—'}</span>
+                    <span>&bull;</span>
+                    <span>Batch of {profile?.batch_year || '—'}</span>
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center space-x-3 bg-white/5 border border-white/10 p-3 rounded-xl backdrop-blur-sm self-start md:self-auto">
-              <div className="text-center px-3 border-r border-white/10">
-                <div className="text-[10px] font-bold uppercase text-slate-400">CGPA</div>
-                <div className="text-base font-extrabold text-emerald-400 mt-0.5">
-                  {profile?.cgpa !== undefined ? profile.cgpa.toFixed(2) : '—'}
+              {/* Stat Pills */}
+              <div className="flex items-center space-x-3 bg-white/10 border border-white/15 p-3.5 rounded-2xl backdrop-blur-md self-start md:self-auto shadow-inner">
+                <div className="text-center px-3.5 border-r border-white/10">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-200">CGPA</div>
+                  <div className="text-lg font-black text-emerald-400 mt-0.5">
+                    {profile?.cgpa !== undefined ? profile.cgpa.toFixed(2) : '—'}
+                  </div>
                 </div>
-              </div>
-              <div className="text-center px-3 border-r border-white/10">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Backlogs</div>
-                <div className="text-base font-extrabold text-slate-200 mt-0.5">
-                  {profile?.active_backlogs ?? 0}
+                <div className="text-center px-3.5 border-r border-white/10">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-200">Backlogs</div>
+                  <div className="text-lg font-black text-slate-200 mt-0.5">
+                    {profile?.active_backlogs ?? 0}
+                  </div>
                 </div>
-              </div>
-              <div className="text-center px-3">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Section</div>
-                <div className="text-base font-extrabold text-indigo-300 mt-0.5">
-                  {profile?.section || 'Not Set'}
+                <div className="text-center px-3.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-200">Section</div>
+                  <div className="text-lg font-black text-indigo-300 mt-0.5">
+                    {profile?.section || 'Not Set'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -387,225 +447,213 @@ export const MyProfilePage: React.FC = () => {
           {/* ========================================================================= */}
           {/* SECTION 1: PERSONAL DETAILS                                               */}
           {/* ========================================================================= */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Personal Details</h2>
-                <p className="text-xs text-slate-500">Contact information and basic profile details</p>
-              </div>
-              {!isEditingPersonal ? (
-                <button
-                  type="button"
-                  onClick={() => setIsEditingPersonal(true)}
-                  className="px-4 py-1.5 bg-white border border-slate-300 hover:border-indigo-400 hover:text-indigo-600 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  <span>Edit Personal Details</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCancelPersonal}
-                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-
-            <form onSubmit={handleSavePersonal} className="p-6 space-y-6">
-              {personalMessage && (
-                <div
-                  className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 ${
-                    personalMessage.type === 'success'
-                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                      : 'bg-rose-50 border border-rose-200 text-rose-800'
-                  }`}
-                >
-                  <span>{personalMessage.text}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Full Name — Institutional */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Full Name
-                    </label>
-                    <span className="text-[10px] text-slate-400 font-medium">Read-Only</span>
-                  </div>
-                  <input
-                    type="text"
-                    disabled
-                    value={user?.full_name || ''}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-xs font-semibold cursor-not-allowed"
-                  />
-                </div>
-
-                {/* University Email — Institutional */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
-                      University Email
-                    </label>
-                    <span className="text-[10px] text-slate-400 font-medium">Read-Only</span>
-                  </div>
-                  <input
-                    type="email"
-                    disabled
-                    value={user?.email || ''}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-xs font-mono cursor-not-allowed"
-                  />
-                </div>
-
-                {/* Personal Email — Student Editable */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Personal Email
-                    </label>
-                    <span className="text-[10px] text-indigo-600 font-medium">Student-Managed</span>
-                  </div>
-                  <input
-                    type="email"
-                    placeholder="student.personal@example.com"
-                    disabled={!isEditingPersonal}
-                    value={personalEmail}
-                    onChange={(e) => setPersonalEmail(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isEditingPersonal
-                        ? 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 bg-white'
-                        : 'border-slate-200 bg-slate-50/70 text-slate-700 cursor-default'
-                    }`}
-                  />
-                </div>
-
-                {/* Phone Number — Student Editable */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Phone Number
-                    </label>
-                    <span className="text-[10px] text-indigo-600 font-medium">Student-Managed</span>
-                  </div>
-                  <input
-                    type="tel"
-                    placeholder="+91 9876543210"
-                    disabled={!isEditingPersonal}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isEditingPersonal
-                        ? 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 bg-white'
-                        : 'border-slate-200 bg-slate-50/70 text-slate-700 cursor-default'
-                    }`}
-                  />
-                </div>
-
-                {/* Gender — Student Editable */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Gender
-                    </label>
-                    <span className="text-[10px] text-indigo-600 font-medium">Student-Managed</span>
-                  </div>
-                  <select
-                    disabled={!isEditingPersonal}
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isEditingPersonal
-                        ? 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 bg-white'
-                        : 'border-slate-200 bg-slate-50/70 text-slate-700 cursor-default'
-                    }`}
+          <Card>
+            <CardHeader
+              action={
+                !isEditingPersonal ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditingPersonal(true)}
+                    leftIcon={
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    }
                   >
-                    <option value="">Not Specified</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                    <option value="Prefer not to say">Prefer not to say</option>
-                  </select>
+                    Edit Personal Details
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={handleCancelPersonal}>
+                    Cancel
+                  </Button>
+                )
+              }
+            >
+              <CardTitle>Personal Details</CardTitle>
+              <CardDescription>Contact information and student communication preferences</CardDescription>
+            </CardHeader>
+
+            <form onSubmit={handleSavePersonal}>
+              <CardContent className="space-y-6">
+                {personalMessage && (
+                  <Alert variant={personalMessage.type === 'success' ? 'success' : 'danger'}>
+                    {personalMessage.text}
+                  </Alert>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {/* Full Name — Student Editable */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Full Name
+                      </Label>
+                      <Badge variant="primary" size="sm">Student-Managed</Badge>
+                    </div>
+                    <input
+                      type="text"
+                      id="student-full-name"
+                      data-testid="input-student-name"
+                      placeholder="Enter your full name"
+                      disabled={!isEditingPersonal}
+                      value={isEditingPersonal ? fullName : (profile?.user?.full_name || user?.full_name || fullName || '')}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition font-medium ${
+                        isEditingPersonal
+                          ? 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 bg-white shadow-xs'
+                          : 'border-slate-200 bg-slate-50/70 text-slate-700 cursor-default'
+                      }`}
+                    />
+                  </div>
+
+                  {/* University Email — Institutional */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        University Email
+                      </Label>
+                      <Badge variant="neutral" size="sm">Read-Only</Badge>
+                    </div>
+                    <input
+                      type="email"
+                      disabled
+                      value={user?.email || profile?.user?.email || ''}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-mono cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Personal Email — Student Editable */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Personal Email
+                      </Label>
+                      <Badge variant="primary" size="sm">Student-Managed</Badge>
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="student.personal@example.com"
+                      disabled={!isEditingPersonal}
+                      value={personalEmail}
+                      onChange={(e) => setPersonalEmail(e.target.value)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition font-medium ${
+                        isEditingPersonal
+                          ? 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 bg-white shadow-xs'
+                          : 'border-slate-200 bg-slate-50/70 text-slate-700 cursor-default'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Phone Number — Student Editable */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Phone Number
+                      </Label>
+                      <Badge variant="primary" size="sm">Student-Managed</Badge>
+                    </div>
+                    <input
+                      type="tel"
+                      placeholder="+91 9876543210"
+                      disabled={!isEditingPersonal}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition font-medium ${
+                        isEditingPersonal
+                          ? 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 bg-white shadow-xs'
+                          : 'border-slate-200 bg-slate-50/70 text-slate-700 cursor-default'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Gender — Student Editable */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Gender
+                      </Label>
+                      <Badge variant="primary" size="sm">Student-Managed</Badge>
+                    </div>
+                    <select
+                      disabled={!isEditingPersonal}
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition font-medium ${
+                        isEditingPersonal
+                          ? 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 bg-white shadow-xs'
+                          : 'border-slate-200 bg-slate-50/70 text-slate-700 cursor-default'
+                      }`}
+                    >
+                      <option value="">Not Specified</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
+              </CardContent>
 
               {isEditingPersonal && (
-                <div className="flex justify-end space-x-3 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={handleCancelPersonal}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
-                  >
+                <CardFooter className="justify-end gap-3">
+                  <Button variant="outline" size="sm" onClick={handleCancelPersonal}>
                     Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingPersonal}
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition"
-                  >
-                    {savingPersonal ? 'Saving...' : 'Save Personal Details'}
-                  </button>
-                </div>
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" isLoading={savingPersonal}>
+                    Save Personal Details
+                  </Button>
+                </CardFooter>
               )}
             </form>
-          </div>
+          </Card>
 
           {/* ========================================================================= */}
           {/* SECTION 2: ACADEMIC DETAILS                                               */}
           {/* ========================================================================= */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Academic Details</h2>
-                <p className="text-xs text-slate-500">Official university credentials and self-reported educational marks</p>
-              </div>
-              {!isEditingAcademic ? (
-                <button
-                  type="button"
-                  onClick={() => setIsEditingAcademic(true)}
-                  className="px-4 py-1.5 bg-white border border-slate-300 hover:border-indigo-400 hover:text-indigo-600 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  <span>Edit Academic Details</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCancelAcademic}
-                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
+          <Card>
+            <CardHeader
+              action={
+                !isEditingAcademic ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditingAcademic(true)}
+                    leftIcon={
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    }
+                  >
+                    Edit Academic Details
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={handleCancelAcademic}>
+                    Cancel
+                  </Button>
+                )
+              }
+            >
+              <CardTitle>Academic Details</CardTitle>
+              <CardDescription>Official university credentials and self-reported educational marks</CardDescription>
+            </CardHeader>
 
             <div className="p-6 space-y-6">
               {academicMessage && (
-                <div
-                  className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 ${
-                    academicMessage.type === 'success'
-                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                      : 'bg-rose-50 border border-rose-200 text-rose-800'
-                  }`}
-                >
-                  <span>{academicMessage.text}</span>
-                </div>
+                <Alert variant={academicMessage.type === 'success' ? 'success' : 'danger'}>
+                  {academicMessage.text}
+                </Alert>
               )}
 
               {/* Institutional Read-Only Highlights */}
-              <div>
-                <div className="flex items-center space-x-2 mb-3">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Institutional Verified Records
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                  <Badge variant="warning" size="sm" dot>
                     Read-Only &bull; Verified by TPO
-                  </span>
+                  </Badge>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
@@ -647,22 +695,20 @@ export const MyProfilePage: React.FC = () => {
               </div>
 
               {/* Student-Managed Academic Fields */}
-              <form onSubmit={handleSaveAcademic} className="space-y-5 pt-2 border-t border-slate-100">
+              <form onSubmit={handleSaveAcademic} className="space-y-5 pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Student-Managed Academic Details
                   </span>
-                  <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-                    Self-Editable
-                  </span>
+                  <Badge variant="primary" size="sm">Self-Editable</Badge>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Section */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Section
-                    </label>
+                    </Label>
                     {isEditingAcademic ? (
                       <input
                         type="text"
@@ -670,10 +716,10 @@ export const MyProfilePage: React.FC = () => {
                         placeholder="e.g. A, B, C"
                         value={section}
                         onChange={(e) => setSection(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white shadow-xs font-medium"
                       />
                     ) : (
-                      <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
+                      <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
                         {profile?.section || 'Not Set'}
                       </div>
                     )}
@@ -681,9 +727,9 @@ export const MyProfilePage: React.FC = () => {
 
                   {/* 10th / SSLC Mark */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       10th / SSLC Mark (%)
-                    </label>
+                    </Label>
                     {isEditingAcademic ? (
                       <input
                         type="number"
@@ -693,10 +739,10 @@ export const MyProfilePage: React.FC = () => {
                         placeholder="e.g. 92.50"
                         value={tenthMark}
                         onChange={(e) => setTenthMark(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white shadow-xs font-medium"
                       />
                     ) : (
-                      <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
+                      <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
                         {formatPercentage(profile?.tenth_mark)}
                       </div>
                     )}
@@ -704,9 +750,9 @@ export const MyProfilePage: React.FC = () => {
 
                   {/* 12th / Intermediate Mark */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       12th / Inter Mark (%)
-                    </label>
+                    </Label>
                     {isEditingAcademic ? (
                       <input
                         type="number"
@@ -716,10 +762,10 @@ export const MyProfilePage: React.FC = () => {
                         placeholder="e.g. 88.00 (Optional)"
                         value={twelfthMark}
                         onChange={(e) => setTwelfthMark(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white shadow-xs font-medium"
                       />
                     ) : (
-                      <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
+                      <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
                         {formatPercentage(profile?.twelfth_mark)}
                       </div>
                     )}
@@ -727,9 +773,9 @@ export const MyProfilePage: React.FC = () => {
 
                   {/* Diploma Mark */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Diploma Mark (%)
-                    </label>
+                    </Label>
                     {isEditingAcademic ? (
                       <input
                         type="number"
@@ -739,10 +785,10 @@ export const MyProfilePage: React.FC = () => {
                         placeholder="e.g. 82.00 (Optional)"
                         value={diplomaMark}
                         onChange={(e) => setDiplomaMark(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white shadow-xs font-medium"
                       />
                     ) : (
-                      <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
+                      <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-800">
                         {formatPercentage(profile?.diploma_mark)}
                       </div>
                     )}
@@ -754,235 +800,210 @@ export const MyProfilePage: React.FC = () => {
                 </p>
 
                 {isEditingAcademic && (
-                  <div className="flex justify-end space-x-3 pt-2 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={handleCancelAcademic}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
-                    >
+                  <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
+                    <Button variant="outline" size="sm" onClick={handleCancelAcademic}>
                       Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={savingAcademic}
-                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition"
-                    >
-                      {savingAcademic ? 'Saving...' : 'Save Academic Details'}
-                    </button>
+                    </Button>
+                    <Button type="submit" variant="primary" size="sm" isLoading={savingAcademic}>
+                      Save Academic Details
+                    </Button>
                   </div>
                 )}
               </form>
             </div>
-          </div>
+          </Card>
 
           {/* ========================================================================= */}
           {/* SECTION 3: RESUME & PORTFOLIO                                             */}
           {/* ========================================================================= */}
-          <div
-            ref={resumeSectionRef}
-            id="resume-section"
-            className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden"
-          >
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Resume & Portfolio</h2>
-                <p className="text-xs text-slate-500">Official recruitment credentials, PDF resume, and public professional links</p>
-              </div>
-              <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
-                Recruitment Assets
-              </span>
-            </div>
+          <div ref={resumeSectionRef} id="resume-section">
+            <Card>
+              <CardHeader
+                action={
+                  <Badge variant="primary" size="sm">
+                    Recruitment Assets
+                  </Badge>
+                }
+              >
+                <CardTitle>Resume & Portfolio</CardTitle>
+                <CardDescription>Official recruitment credentials, PDF resume, and public professional links</CardDescription>
+              </CardHeader>
 
-            <div className="p-6 space-y-6">
-              {/* SUBSECTION A: RESUME DOCUMENT */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                    Verified Resume Document
-                  </span>
-                  <span className="text-[10px] text-slate-500">PDF Format &bull; Max 5MB</span>
-                </div>
-
-                {resumeMessage && (
-                  <div
-                    className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 ${
-                      resumeMessage.type === 'success'
-                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                        : 'bg-rose-50 border border-rose-200 text-rose-800'
-                    }`}
-                  >
-                    <span>{resumeMessage.text}</span>
-                  </div>
-                )}
-
-                {/* Status Card */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold flex-shrink-0">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">
-                        {profile?.resume_gcs_path ? 'Official Resume Document on File' : 'No Resume Uploaded'}
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {profile?.resume_uploaded_at
-                          ? `Last updated: ${new Date(profile.resume_uploaded_at).toLocaleString()}`
-                          : 'Upload a PDF resume to complete placement drive eligibility'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {profile?.resume_gcs_path && (
-                    <button
-                      type="button"
-                      onClick={handleDownloadResume}
-                      disabled={downloadingResume}
-                      className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5 self-start sm:self-auto"
-                    >
-                      <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      <span>{downloadingResume ? 'Loading...' : 'Download Resume PDF'}</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Upload File Input */}
-                <div className="p-4 rounded-xl border border-slate-200 space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Upload or Replace Resume
-                  </label>
-                  <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      onChange={handleFileChange}
-                      className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleUploadResume}
-                      disabled={!selectedFile || uploadingResume}
-                      className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm transition whitespace-nowrap"
-                    >
-                      {uploadingResume ? 'Uploading...' : 'Confirm Upload'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* SUBSECTION B: PROFESSIONAL PORTFOLIO URL */}
-              <div className="pt-5 border-t border-slate-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
+              <div className="p-6 space-y-6">
+                {/* SUBSECTION A: RESUME DOCUMENT */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Professional Portfolio & Project Showcase
+                      Verified Resume Document
                     </span>
-                    <p className="text-[11px] text-slate-400">Personal portfolio, GitHub profile, or LinkedIn link</p>
+                    <span className="text-[10px] text-slate-500 font-medium">PDF Format &bull; Max 5MB</span>
                   </div>
-                  {!isEditingPortfolio ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingPortfolio(true)}
-                      className="px-3.5 py-1.5 bg-white border border-slate-300 hover:border-indigo-400 hover:text-indigo-600 text-slate-700 text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                      <span>Edit Portfolio</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleCancelPortfolio}
-                      className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition"
-                    >
-                      Cancel
-                    </button>
+
+                  {resumeMessage && (
+                    <Alert variant={resumeMessage.type === 'success' ? 'success' : 'danger'}>
+                      {resumeMessage.text}
+                    </Alert>
                   )}
-                </div>
 
-                {portfolioMessage && (
-                  <div
-                    className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 ${
-                      portfolioMessage.type === 'success'
-                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                        : 'bg-rose-50 border border-rose-200 text-rose-800'
-                    }`}
-                  >
-                    <span>{portfolioMessage.text}</span>
-                  </div>
-                )}
-
-                {!isEditingPortfolio ? (
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  {/* Status Card */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center space-x-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm shadow-indigo-600/20">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Portfolio URL</div>
-                        {profile?.portfolio_url ? (
-                          <a
-                            href={profile.portfolio_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center space-x-1 mt-0.5"
-                          >
-                            <span className="truncate max-w-md">{profile.portfolio_url}</span>
-                            <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        ) : (
-                          <span className="text-xs text-slate-500 italic mt-0.5 block">Not Provided</span>
-                        )}
+                        <div className="text-xs font-bold text-slate-900">
+                          {profile?.resume_gcs_path ? 'Official Resume Document on File' : 'No Resume Uploaded'}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {profile?.resume_uploaded_at
+                            ? `Last updated: ${new Date(profile.resume_uploaded_at).toLocaleString()}`
+                            : 'Upload a PDF resume to complete placement drive eligibility'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSavePortfolio} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                        Portfolio URL (GitHub, LinkedIn, Personal Site)
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="https://github.com/yourusername or https://myportfolio.dev"
-                        value={portfolioUrl}
-                        onChange={(e) => setPortfolioUrl(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white font-mono"
-                      />
-                    </div>
 
-                    <div className="flex justify-end space-x-3">
-                      <button
-                        type="button"
-                        onClick={handleCancelPortfolio}
-                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
+                    {profile?.resume_gcs_path && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDownloadResume}
+                        isLoading={downloadingResume}
+                        leftIcon={
+                          <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        }
+                        className="self-start sm:self-auto"
                       >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={savingPortfolio}
-                        className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition"
+                        Download Resume PDF
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Upload File Input */}
+                  <div className="p-4 rounded-xl border border-slate-200/80 bg-white space-y-2">
+                    <Label className="text-xs font-bold text-slate-700">
+                      Upload or Replace Resume
+                    </Label>
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={handleFileChange}
+                        className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                      />
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleUploadResume}
+                        disabled={!selectedFile || uploadingResume}
+                        isLoading={uploadingResume}
+                        className="w-full sm:w-auto whitespace-nowrap"
                       >
-                        {savingPortfolio ? 'Saving...' : 'Save Portfolio'}
-                      </button>
+                        Confirm Upload
+                      </Button>
                     </div>
-                  </form>
-                )}
+                  </div>
+                </div>
+
+                {/* SUBSECTION B: PROFESSIONAL PORTFOLIO URL */}
+                <div className="pt-5 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Professional Portfolio & Project Showcase
+                      </span>
+                      <p className="text-[11px] text-slate-400">Personal portfolio, GitHub profile, or LinkedIn link</p>
+                    </div>
+                    {!isEditingPortfolio ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingPortfolio(true)}
+                        leftIcon={
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        }
+                      >
+                        Edit Portfolio
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={handleCancelPortfolio}>
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+
+                  {portfolioMessage && (
+                    <Alert variant={portfolioMessage.type === 'success' ? 'success' : 'danger'}>
+                      {portfolioMessage.text}
+                    </Alert>
+                  )}
+
+                  {!isEditingPortfolio ? (
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shrink-0">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Portfolio URL</div>
+                          {profile?.portfolio_url ? (
+                            <a
+                              href={profile.portfolio_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center space-x-1 mt-0.5"
+                            >
+                              <span className="truncate max-w-md">{profile.portfolio_url}</span>
+                              <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-500 italic mt-0.5 block">Not Provided</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSavePortfolio} className="space-y-4">
+                      <div>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                          Portfolio URL (GitHub, LinkedIn, Personal Site)
+                        </Label>
+                        <input
+                          type="url"
+                          placeholder="https://github.com/yourusername or https://myportfolio.dev"
+                          value={portfolioUrl}
+                          onChange={(e) => setPortfolioUrl(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-xs text-slate-900 outline-none transition bg-white font-mono shadow-xs"
+                        />
+                      </div>
+
+                      <div className="flex justify-end space-x-3">
+                        <Button variant="outline" size="sm" onClick={handleCancelPortfolio}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" variant="primary" size="sm" isLoading={savingPortfolio}>
+                          Save Portfolio
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       )}
     </div>
   );
 };
+

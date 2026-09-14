@@ -322,6 +322,13 @@ test.describe('Student Workflows', () => {
       phone_number: '+91 9876543210',
       personal_email: 'initial.student@gmail.com',
       gender: 'Male',
+      user: {
+        id: '11111111-1111-1111-1111-111111111111',
+        email: 'student1@campusflow.edu',
+        full_name: 'Synthetic Student One',
+        role: 'STUDENT',
+        is_active: true,
+      },
     };
 
     await page.route('**/api/v1/students/me', async (route) => {
@@ -333,6 +340,9 @@ test.describe('Student Workflows', () => {
         });
       } else if (route.request().method() === 'PATCH') {
         const patchData = JSON.parse(route.request().postData() || '{}');
+        if (patchData.full_name) {
+          mockProfile.user.full_name = patchData.full_name;
+        }
         mockProfile = { ...mockProfile, ...patchData };
         await route.fulfill({
           status: 200,
@@ -347,7 +357,8 @@ test.describe('Student Workflows', () => {
     // Click Edit Personal Details
     await page.click('button:has-text("Edit Personal Details")');
 
-    // Fill new personal email and phone
+    // Edit Full Name, Personal Email, and Phone
+    await page.fill('#student-full-name', 'Updated Student Name');
     await page.fill('input[placeholder="student.personal@example.com"]', 'updated.karthik@gmail.com');
     await page.fill('input[type="tel"]', '+91 9123456780');
 
@@ -359,7 +370,83 @@ test.describe('Student Workflows', () => {
 
     // Reload and verify persistence
     await page.reload();
+    await expect(page.locator('input[value="Updated Student Name"]')).toBeVisible();
     await expect(page.locator('input[value="updated.karthik@gmail.com"]')).toBeVisible();
     await expect(page.locator('input[value="+91 9123456780"]')).toBeVisible();
+  });
+
+  test('student uploads PDF resume via UI and receives confirmation', async ({ page }) => {
+    let mockProfile: any = {
+      id: 'p1111111-1111-1111-1111-111111111111',
+      user_id: '11111111-1111-1111-1111-111111111111',
+      roll_number: 'SYN26CSE00001',
+      branch_code: 'CSE',
+      batch_year: 2026,
+      cgpa: 8.80,
+      active_backlogs: 0,
+      resume_gcs_path: null,
+      resume_uploaded_at: null,
+    };
+
+    await page.route('**/api/v1/students/me', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(mockProfile),
+        });
+      }
+    });
+
+    await page.route('**/api/v1/students/me/resume-upload-url', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          upload_url: 'http://localhost:8000/api/v1/storage/upload/resumes/test-uuid/resume.pdf?sig=mockPUT',
+          object_path: 'resumes/test-uuid/resume.pdf',
+        }),
+      });
+    });
+
+    await page.route('**/api/v1/storage/upload/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Mock upload successful', object_path: 'resumes/test-uuid/resume.pdf' }),
+      });
+    });
+
+    await page.route('**/api/v1/students/me/resume-confirm', async (route) => {
+      mockProfile.resume_gcs_path = 'resumes/test-uuid/resume.pdf';
+      mockProfile.resume_uploaded_at = new Date().toISOString();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockProfile),
+      });
+    });
+
+    await page.goto('/profile');
+
+    // Verify initial state: No resume uploaded
+    await expect(page.locator('text=No Resume Uploaded')).toBeVisible();
+
+    // Set file input
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'resume.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 Mock PDF for testing %%EOF'),
+    });
+
+    // Click Confirm Upload
+    const uploadBtn = page.locator('button:has-text("Confirm Upload")');
+    await expect(uploadBtn).toBeEnabled();
+    await uploadBtn.click();
+
+    // Verify upload success message
+    await expect(page.locator('text=Resume uploaded and verified successfully!')).toBeVisible();
+    await expect(page.locator('text=Official Resume Document on File')).toBeVisible();
   });
 });

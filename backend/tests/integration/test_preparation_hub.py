@@ -140,6 +140,7 @@ async def seed_preparation_data(db_session: AsyncSession) -> dict:
         "topics": [t_quant, t_logic, t_py, t_sql, t_os, t_hr],
         "roles": [r_swe, r_aiml, r_da, r_genai, r_qa, r_devops],
         "t_py": t_py,
+        "t_quant": t_quant,
         "r_swe": r_swe,
     }
 
@@ -462,3 +463,126 @@ async def test_officer_direct_material_creation(
     assert list_res.status_code == 200
     items = list_res.json()["items"]
     assert any(item["title"] == "Official Placement Preparation Handbook" for item in items)
+
+
+@pytest.mark.asyncio
+async def test_shared_general_material_visible_across_roles(
+    async_client: AsyncClient, prep_auth_users: dict, seed_preparation_data: dict, db_session: AsyncSession
+):
+    topic = seed_preparation_data["t_quant"]
+    swe_role = seed_preparation_data["r_swe"]
+
+    # Create general material with role_id=None
+    create_res = await async_client.post(
+        "/api/v1/preparation/officers/materials",
+        headers=prep_auth_users["officer"],
+        json={
+            "topic_id": str(topic.id),
+            "role_id": None,
+            "title": "Universal Aptitude Shortcut Techniques",
+            "url": "https://example.com/shortcuts.pdf",
+            "material_type": "PDF",
+            "difficulty": "BEGINNER",
+        },
+    )
+    assert create_res.status_code == 201
+
+    # Student queries with SWE role_id -> general material is still returned
+    list_res = await async_client.get(
+        f"/api/v1/preparation/materials?role_id={swe_role.id}",
+        headers=prep_auth_users["student"],
+    )
+    assert list_res.status_code == 200
+    titles = [item["title"] for item in list_res.json()["items"]]
+    assert "Universal Aptitude Shortcut Techniques" in titles
+
+
+@pytest.mark.asyncio
+async def test_pending_and_rejected_materials_not_in_public_library(
+    async_client: AsyncClient, prep_auth_users: dict, seed_preparation_data: dict
+):
+    topic = seed_preparation_data["t_py"]
+
+    # Student suggests material
+    sug_res = await async_client.post(
+        "/api/v1/preparation/suggest",
+        headers=prep_auth_users["student"],
+        json={
+            "topic_id": str(topic.id),
+            "title": "Pending Suggestion Item",
+            "url": "https://example.com/pending-guide",
+            "material_type": "ARTICLE",
+            "difficulty": "INTERMEDIATE",
+        },
+    )
+    assert sug_res.status_code == 201
+    mat_id = sug_res.json()["id"]
+
+    # Not visible in public /materials listing
+    list_res = await async_client.get(
+        f"/api/v1/preparation/materials?topic_id={topic.id}",
+        headers=prep_auth_users["student"],
+    )
+    assert list_res.status_code == 200
+    titles = [item["title"] for item in list_res.json()["items"]]
+    assert "Pending Suggestion Item" not in titles
+
+    # Officer rejects it
+    rej_res = await async_client.post(
+        f"/api/v1/preparation/officers/submissions/{mat_id}/review",
+        headers=prep_auth_users["officer"],
+        json={"status": "REJECTED", "review_notes": "Outdated content."},
+    )
+    assert rej_res.status_code == 200
+
+    # Still not visible in public listing
+    list_res2 = await async_client.get(
+        f"/api/v1/preparation/materials?topic_id={topic.id}",
+        headers=prep_auth_users["student"],
+    )
+    titles2 = [item["title"] for item in list_res2.json()["items"]]
+    assert "Pending Suggestion Item" not in titles2
+
+
+@pytest.mark.asyncio
+async def test_officer_delete_material_and_rbac(
+    async_client: AsyncClient, prep_auth_users: dict, seed_preparation_data: dict
+):
+    topic = seed_preparation_data["t_py"]
+
+    # Create material
+    create_res = await async_client.post(
+        "/api/v1/preparation/officers/materials",
+        headers=prep_auth_users["officer"],
+        json={
+            "topic_id": str(topic.id),
+            "title": "Temporary Material to Delete",
+            "url": "https://example.com/temp-guide",
+            "material_type": "ARTICLE",
+            "difficulty": "BEGINNER",
+        },
+    )
+    mat_id = create_res.json()["id"]
+
+    # Student cannot delete (403 Forbidden)
+    del_student = await async_client.delete(
+        f"/api/v1/preparation/officers/materials/{mat_id}",
+        headers=prep_auth_users["student"],
+    )
+    assert del_student.status_code == 403
+
+    # Officer deletes successfully (204 No Content)
+    del_officer = await async_client.delete(
+        f"/api/v1/preparation/officers/materials/{mat_id}",
+        headers=prep_auth_users["officer"],
+    )
+    assert del_officer.status_code == 204
+
+    # Deleted item is gone from public listing
+    list_res = await async_client.get(
+        f"/api/v1/preparation/materials?topic_id={topic.id}",
+        headers=prep_auth_users["student"],
+    )
+    titles = [item["title"] for item in list_res.json()["items"]]
+    assert "Temporary Material to Delete" not in titles
+

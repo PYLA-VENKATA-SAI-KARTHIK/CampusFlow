@@ -143,9 +143,33 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleClose = () => {
+  // Retry & Error Recovery State
+  const [createdDrive, setCreatedDrive] = useState<PlacementDrive | null>(null);
+  const [createdStageIndexes, setCreatedStageIndexes] = useState<Set<number>>(new Set());
+  const [showDismissConfirm, setShowDismissConfirm] = useState<boolean>(false);
+
+  const isFormDirty =
+    currentStep > 1 ||
+    Boolean(createdDrive) ||
+    newCompanyName.trim().length > 0 ||
+    customJobRole.trim().length > 0 ||
+    jobDescription.trim().length > 0 ||
+    bondDetails.trim().length > 0;
+
+  const handleRequestClose = () => {
+    if (isFormDirty && !showDismissConfirm) {
+      setShowDismissConfirm(true);
+      return;
+    }
+    handleForceClose();
+  };
+
+  const handleForceClose = () => {
+    setShowDismissConfirm(false);
     setErrorMessage(null);
     setCurrentStep(1);
+    setCreatedDrive(null);
+    setCreatedStageIndexes(new Set());
     onClose();
   };
 
@@ -272,49 +296,54 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
     setErrorMessage(null);
 
     try {
-      // 1. Resolve Company ID
-      let resolvedCompanyId = selectedCompanyId;
-      if (isCreatingNewCompany) {
-        const createdCompany = await driveService.createCompany({
-          name: newCompanyName.trim(),
-          website: newCompanyWebsite.trim() || undefined,
-          industry: newCompanyIndustry.trim() || undefined,
-          description: newCompanyDescription.trim() || undefined,
-        });
-        resolvedCompanyId = createdCompany.id;
+      // 1. Resolve Company ID & Create Drive if not already created
+      let driveToUse = createdDrive;
+      if (!driveToUse) {
+        let resolvedCompanyId = selectedCompanyId;
+        if (isCreatingNewCompany) {
+          const createdCompany = await driveService.createCompany({
+            name: newCompanyName.trim(),
+            website: newCompanyWebsite.trim() || undefined,
+            industry: newCompanyIndustry.trim() || undefined,
+            description: newCompanyDescription.trim() || undefined,
+          });
+          resolvedCompanyId = createdCompany.id;
+        }
+
+        const effectiveRole = jobRole === 'OTHER' ? customJobRole.trim() : jobRole.trim();
+        const criteriaPayload = {
+          min_cgpa: minCgpa ? Number(minCgpa) : null,
+          max_active_backlogs: maxBacklogs ? Number(maxBacklogs) : null,
+          eligible_branches: selectedBranches,
+          eligible_batch_years: selectedBatchYears,
+          gender: genderCriteria || null,
+        };
+
+        const deadlineIso = new Date(registrationDeadline).toISOString();
+
+        const drivePayload = {
+          company_id: resolvedCompanyId,
+          title: driveTitle.trim(),
+          job_role: effectiveRole,
+          description: jobDescription.trim() || undefined,
+          ctc_lpa: ctcLpa ? Number(ctcLpa) : undefined,
+          stipend_monthly: stipendMonthly ? Number(stipendMonthly) : undefined,
+          location: jobLocation.trim() || undefined,
+          bond_details: bondDetails.trim() || undefined,
+          registration_deadline: deadlineIso,
+          eligibility_criteria: criteriaPayload,
+        };
+
+        driveToUse = await driveService.createDrive(drivePayload);
+        setCreatedDrive(driveToUse);
       }
 
-      // 2. Prepare Payload
-      const effectiveRole = jobRole === 'OTHER' ? customJobRole.trim() : jobRole.trim();
-      const criteriaPayload = {
-        min_cgpa: minCgpa ? Number(minCgpa) : null,
-        max_active_backlogs: maxBacklogs ? Number(maxBacklogs) : null,
-        eligible_branches: selectedBranches,
-        eligible_batch_years: selectedBatchYears,
-        gender: genderCriteria || null,
-      };
-
-      const deadlineIso = new Date(registrationDeadline).toISOString();
-
-      const drivePayload = {
-        company_id: resolvedCompanyId,
-        title: driveTitle.trim(),
-        job_role: effectiveRole,
-        description: jobDescription.trim() || undefined,
-        ctc_lpa: ctcLpa ? Number(ctcLpa) : undefined,
-        stipend_monthly: stipendMonthly ? Number(stipendMonthly) : undefined,
-        location: jobLocation.trim() || undefined,
-        bond_details: bondDetails.trim() || undefined,
-        registration_deadline: deadlineIso,
-        eligibility_criteria: criteriaPayload,
-      };
-
-      // 3. Create Drive (DRAFT)
-      const createdDrive = await driveService.createDrive(drivePayload);
-
-      // 4. Create Stages
-      for (const stage of stages) {
-        await driveService.createStage(createdDrive.id, {
+      // 2. Create Remaining Stages (prevents duplicate stage creations on retry)
+      const updatedIndexes = new Set(createdStageIndexes);
+      for (let i = 0; i < stages.length; i++) {
+        if (updatedIndexes.has(i)) continue;
+        const stage = stages[i];
+        await driveService.createStage(driveToUse.id, {
           name: stage.name.trim(),
           stage_type: stage.stage_type,
           sequence_order: stage.sequence_order,
@@ -322,21 +351,27 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
           location_or_link: stage.location_or_link?.trim() || null,
           instructions: stage.instructions?.trim() || null,
         });
+        updatedIndexes.add(i);
+        setCreatedStageIndexes(new Set(updatedIndexes));
       }
 
-      // 5. If publish requested, transition status from DRAFT -> PUBLISHED
-      let finalDrive = createdDrive;
+      // 3. If publish requested, transition status from DRAFT -> PUBLISHED
+      let finalDrive = driveToUse;
       if (publishImmediately) {
-        finalDrive = await driveService.updateDriveStatus(createdDrive.id, 'PUBLISHED');
+        finalDrive = await driveService.updateDriveStatus(driveToUse.id, 'PUBLISHED');
       }
 
       onSuccess(finalDrive, publishImmediately);
-      handleClose();
+      handleForceClose();
     } catch (err: any) {
-      setErrorMessage(
-        err.response?.data?.detail ||
-          'Failed to create placement drive. Please verify the entered details.'
-      );
+      const apiMsg = err.response?.data?.detail || err.message || 'Failed to complete drive setup.';
+      if (createdDrive) {
+        setErrorMessage(
+          `Drive saved as Draft (ID: ${createdDrive.id}), but stage setup did not complete: ${apiMsg}. You can click retry to complete setup without creating a duplicate drive.`
+        );
+      } else {
+        setErrorMessage(apiMsg || 'Failed to create placement drive. Please verify the entered details.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -376,7 +411,7 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
           </div>
 
           <button
-            onClick={handleClose}
+            onClick={handleRequestClose}
             className="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition"
             aria-label="Close modal"
           >
@@ -385,6 +420,34 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
             </svg>
           </button>
         </div>
+
+        {/* Unsaved Changes Confirmation Warning */}
+        {showDismissConfirm && (
+          <div className="my-2 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in flex-shrink-0">
+            <div className="flex items-center space-x-2 text-amber-900 font-semibold">
+              <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>You have unsaved changes. Are you sure you want to discard your progress?</span>
+            </div>
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowDismissConfirm(false)}
+                className="px-3 py-1 bg-white border border-amber-300 text-amber-900 rounded-lg font-bold hover:bg-amber-100 transition"
+              >
+                Stay
+              </button>
+              <button
+                type="button"
+                onClick={handleForceClose}
+                className="px-3 py-1 bg-rose-600 text-white rounded-lg font-bold hover:bg-rose-700 transition"
+              >
+                Discard & Exit
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Step Progress Bar */}
         <div className="grid grid-cols-5 gap-1.5 my-4 flex-shrink-0">
@@ -971,7 +1034,7 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
 
                 <div className="flex items-start space-x-3">
                   <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-extrabold text-base flex-shrink-0">
-                    {getCompanyName().charAt(0).toUpperCase()}
+                    {(getCompanyName() || 'C').charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">{getCompanyName()}</h3>
@@ -1051,7 +1114,7 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
           <div className="flex items-center space-x-2.5">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={handleRequestClose}
               disabled={isSubmitting}
               className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition"
             >

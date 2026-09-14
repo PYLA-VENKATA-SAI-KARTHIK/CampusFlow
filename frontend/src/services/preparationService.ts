@@ -87,4 +87,8 @@ export const preparationService = {
     const res = await apiClient.post<PreparationMaterial>('/preparation/officers/materials', payload);
     return res.data;
   },
+
+  deleteMaterialAsOfficer: async (materialId: string): Promise<void> => {
+    await apiClient.delete(`/preparation/officers/materials/${materialId}`);
+  },
 };

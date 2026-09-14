@@ -181,3 +181,25 @@ class PreparationService:
         await self.prep_repo.session.commit()
         await self.prep_repo.session.refresh(created)
         return created
+
+    async def delete_material_as_officer(
+        self, material_id: UUID, user_id: UUID
+    ) -> None:
+        material = await self.prep_repo.get_material_by_id(material_id)
+        if not material:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Preparation material not found.",
+            )
+        audit_entry = AuditLog(
+            performed_by_user_id=user_id,
+            action="PREPARATION_MATERIAL_DELETED",
+            entity_type="PREPARATION_MATERIAL",
+            entity_id=material.id,
+            old_state={"title": material.title, "url": material.url},
+            new_state=None,
+        )
+        self.audit_repo.add(audit_entry)
+        await self.prep_repo.delete_material(material)
+        await self.prep_repo.session.commit()
+

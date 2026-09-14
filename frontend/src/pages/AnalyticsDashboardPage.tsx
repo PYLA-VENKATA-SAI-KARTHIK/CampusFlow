@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/apiClient';
+import { driveService } from '../services/driveService';
 import type { OverviewAnalyticsResponse, RecentDriveActivity } from '../types/analytics';
+import type { PlacementDrive } from '../types/drive';
 import { KpiStatCard } from '../components/analytics/KpiStatCard';
 import { BranchBreakdownTable } from '../components/analytics/BranchBreakdownTable';
 
 export const AnalyticsDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<OverviewAnalyticsResponse | null>(null);
+  const [drivesList, setDrivesList] = useState<PlacementDrive[]>([]);
+  const [loadingDrives, setLoadingDrives] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchDriveId, setSearchDriveId] = useState('');
+  const [selectedDriveId, setSelectedDriveId] = useState('');
 
   const fetchOverview = async () => {
     try {
@@ -25,16 +29,22 @@ export const AnalyticsDashboardPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchOverview();
-  }, []);
-
-  const handleSearchDrive = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchDriveId.trim()) {
-      navigate(`/drives/${searchDriveId.trim()}/analytics`);
+  const loadDrives = async () => {
+    try {
+      setLoadingDrives(true);
+      const res = await driveService.listDrives({ page: 1, page_size: 100 });
+      setDrivesList(res.items || []);
+    } catch {
+      setDrivesList([]);
+    } finally {
+      setLoadingDrives(false);
     }
   };
+
+  useEffect(() => {
+    fetchOverview();
+    loadDrives();
+  }, []);
 
   if (loading) {
     return (
@@ -85,23 +95,36 @@ export const AnalyticsDashboardPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Quick Drive Lookup */}
-        <form onSubmit={handleSearchDrive} className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Drive UUID..."
-            value={searchDriveId}
-            onChange={(e) => setSearchDriveId(e.target.value)}
-            className="border border-slate-300 rounded-xl px-3.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none w-48 sm:w-64 shadow-sm"
-          />
-          <button
-            type="submit"
-            disabled={!searchDriveId.trim()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-md shadow-indigo-600/20 transition whitespace-nowrap"
+        {/* Quick Drive Funnel Selector */}
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedDriveId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedDriveId(val);
+              if (val) navigate(`/drives/${val}/analytics`);
+            }}
+            aria-label="Select Drive for Funnel Analytics"
+            className="border border-slate-300 rounded-xl px-3.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none w-52 sm:w-72 shadow-sm bg-white font-semibold text-slate-800"
           >
-            Drive Analytics
-          </button>
-        </form>
+            <option value="">
+              {loadingDrives ? 'Loading drives...' : 'Select Drive for Funnel Analytics...'}
+            </option>
+            {drivesList.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.company?.name || 'Company'} — {d.job_role} ({d.status})
+              </option>
+            ))}
+          </select>
+          {selectedDriveId && (
+            <button
+              onClick={() => navigate(`/drives/${selectedDriveId}/analytics`)}
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-indigo-600/20 transition whitespace-nowrap"
+            >
+              View Funnel &rarr;
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Top Level KPI Grid */}
