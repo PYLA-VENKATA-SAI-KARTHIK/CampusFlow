@@ -457,7 +457,7 @@ test.describe('Placement Drive Lifecycle & Student Discovery (Phase 5A)', () => 
     // 4. Register for Drive
     await page.getByRole('button', { name: 'Register for Drive Now' }).click();
     await expect(page.getByText('Your application has been successfully submitted for this drive!')).toBeVisible();
-    await expect(page.getByText('Application Submitted')).toBeVisible();
+    await expect(page.getByText('Application Submitted').first()).toBeVisible();
   });
 
   test('3. Officer selects drive by human-readable dropdown for Manual Broadcast with real UUID internally', async ({ page }) => {

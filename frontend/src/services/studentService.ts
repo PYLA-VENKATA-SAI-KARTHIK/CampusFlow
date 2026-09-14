@@ -64,6 +64,7 @@ export interface StudentImportPreviewResponse {
   existing_in_db_count: number;
   can_import: boolean;
   preview_items: StudentImportPreviewItem[];
+  valid_items?: StudentImportConfirmItem[];
 }
 
 export interface StudentImportConfirmItem {

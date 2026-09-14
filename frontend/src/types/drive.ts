@@ -54,6 +54,8 @@ export interface PlacementStage {
   location_or_link?: string | null;
   instructions?: string | null;
   is_published: boolean;
+  student_count?: number;
+  my_status?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -163,5 +165,66 @@ export interface BulkStageStatusRequest {
   student_ids: string[];
   status: AssignmentStatus;
   result_notes?: string | null;
+}
+
+export type StageImportCategory =
+  | 'MATCHED'
+  | 'ALREADY_AT_STAGE'
+  | 'NOT_APPLIED'
+  | 'UNKNOWN_REG_NO'
+  | 'DUPLICATE_IN_FILE';
+
+export interface StageImportPreviewItem {
+  row_index: number;
+  roll_number: string;
+  student_name?: string | null;
+  category: StageImportCategory;
+  student_user_id?: string | null;
+  branch_code?: string | null;
+  cgpa?: number | null;
+  current_status?: string | null;
+  details?: string | null;
+}
+
+export interface StageImportPreviewResponse {
+  drive_id: string;
+  stage_id: string;
+  stage_name: string;
+  stage_sequence: number;
+  filename: string;
+  detected_headers: string[];
+  detected_mappings: Record<string, string>;
+  total_rows: number;
+  matched_count: number;
+  already_at_stage_count: number;
+  not_applied_count: number;
+  unknown_count: number;
+  duplicate_count: number;
+  can_confirm: boolean;
+  items: StageImportPreviewItem[];
+  valid_student_ids: string[];
+}
+
+export interface StageImportConfirmResponse {
+  drive_id: string;
+  stage_id: string;
+  stage_name: string;
+  total_submitted: number;
+  newly_assigned_count: number;
+  already_assigned_count: number;
+  message: string;
+}
+
+export interface StageQualifiedStudentItem {
+  assignment_id: string;
+  stage_id: string;
+  student_user_id: string;
+  roll_number: string;
+  full_name: string;
+  email: string;
+  branch_code: string;
+  cgpa: number;
+  status: string;
+  assigned_at: string;
 }
 

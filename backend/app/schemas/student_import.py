@@ -36,6 +36,7 @@ class StudentMasterImportPreviewResponse(BaseModel):
     existing_in_db_count: int
     can_import: bool
     preview_items: list[StudentMasterImportPreviewItem]
+    valid_items: list[StudentMasterImportItem] = Field(default_factory=list)
 
 
 class StudentMasterImportItem(BaseModel):

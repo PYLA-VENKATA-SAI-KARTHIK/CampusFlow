@@ -29,11 +29,10 @@ class DriveRegistrationRepository:
     async def get_registered_student_ids_for_drive(self, drive_id: UUID) -> set[UUID]:
         stmt = select(DriveRegistration.student_user_id).where(
             DriveRegistration.drive_id == drive_id,
-            DriveRegistration.status == "REGISTERED",
+            DriveRegistration.status.in_(("REGISTERED", "SHORTLISTED", "OFFERED", "SELECTED")),
         )
         result = await self.session.execute(stmt)
         return set(result.scalars().all())
-
 
     async def get_registered_student_ids_for_drive_and_students(self, drive_id: UUID, student_ids: Sequence[UUID]) -> set[UUID]:
         if not student_ids:
@@ -41,7 +40,7 @@ class DriveRegistrationRepository:
         stmt = select(DriveRegistration.student_user_id).where(
             DriveRegistration.drive_id == drive_id,
             DriveRegistration.student_user_id.in_(student_ids),
-            DriveRegistration.status == "REGISTERED",
+            DriveRegistration.status.in_(("REGISTERED", "SHORTLISTED", "OFFERED", "SELECTED")),
         )
         result = await self.session.execute(stmt)
         return set(result.scalars().all())

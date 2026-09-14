@@ -12,6 +12,9 @@ import type {
   Branch,
   DriveRegistrationWithStudent,
   BulkStageStatusRequest,
+  StageImportPreviewResponse,
+  StageImportConfirmResponse,
+  StageQualifiedStudentItem,
 } from '../types/drive';
 
 export const driveService = {
@@ -110,6 +113,43 @@ export const driveService = {
 
   async publishStageResults(driveId: string, stageId: string): Promise<{ message: string }> {
     const res = await apiClient.post(`/drives/${driveId}/stages/${stageId}/publish-results`);
+    return res.data;
+  },
+
+  // Stage Qualified List Import Workflow
+  async previewStageQualifiedImport(
+    driveId: string,
+    stageId: string,
+    file: File,
+    customMapping?: Record<string, string>
+  ): Promise<StageImportPreviewResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (customMapping) {
+      formData.append('custom_mapping', JSON.stringify(customMapping));
+    }
+    const res = await apiClient.post(`/drives/${driveId}/stages/${stageId}/qualified/preview`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  async confirmStageQualifiedImport(
+    driveId: string,
+    stageId: string,
+    data: { filename: string; student_ids: string[] }
+  ): Promise<StageImportConfirmResponse> {
+    const res = await apiClient.post(`/drives/${driveId}/stages/${stageId}/qualified/confirm`, data);
+    return res.data;
+  },
+
+  async listStageQualifiedStudents(
+    driveId: string,
+    stageId: string
+  ): Promise<StageQualifiedStudentItem[]> {
+    const res = await apiClient.get(`/drives/${driveId}/stages/${stageId}/qualified/students`);
     return res.data;
   },
 

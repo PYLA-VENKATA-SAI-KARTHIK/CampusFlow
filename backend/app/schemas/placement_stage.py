@@ -35,6 +35,8 @@ class PlacementStageResponse(PlacementStageBase):
     id: UUID
     drive_id: UUID
     is_published: bool
+    student_count: int = 0
+    my_status: str | None = None
     created_at: datetime
     updated_at: datetime
 

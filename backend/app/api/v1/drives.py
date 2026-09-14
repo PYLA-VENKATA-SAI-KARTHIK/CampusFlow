@@ -4,7 +4,8 @@ Placement Drive management endpoints.
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+import json
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import UserContext, get_current_user, get_db, require_role
@@ -25,10 +26,17 @@ from app.schemas.placement_stage import (
     PlacementStageResponse,
     PlacementStageUpdate,
 )
+from app.schemas.stage_import import (
+    StageImportConfirmRequest,
+    StageImportConfirmResponse,
+    StageImportPreviewResponse,
+    StageQualifiedStudentItem,
+)
 from app.schemas.student_profile import StudentProfileResponse
 from app.services.placement_drive_service import PlacementDriveService
 from app.services.placement_stage_service import PlacementStageService
 from app.services.registration_service import RegistrationService
+from app.services.stage_import_service import StageImportService
 from app.repositories.drive_registration_repository import DriveRegistrationRepository
 from app.repositories.placement_stage_repository import PlacementStageRepository
 from app.repositories.stage_assignment_repository import StageAssignmentRepository
@@ -82,6 +90,13 @@ def get_stage_service(
     audit_repo = AuditLogRepository(session)
     reg_repo = DriveRegistrationRepository(session)
     return PlacementStageService(stage_repo, assignment_repo, drive_repo, audit_repo, reg_repo, dispatcher=dispatcher)
+
+
+def get_stage_import_service(
+    session: AsyncSession = Depends(get_db),
+    dispatcher: NotificationDispatcher = Depends(get_notification_dispatcher),
+) -> StageImportService:
+    return StageImportService(session, dispatcher=dispatcher)
 
 
 
@@ -322,6 +337,75 @@ async def publish_results(
 ) -> dict:
     """Publish results for a stage, notifying all assigned students."""
     return await service.publish_results(drive_id, stage_id, current_user.user_id)
+
+
+@router.post("/{drive_id}/stages/{stage_id}/qualified/preview", response_model=StageImportPreviewResponse)
+async def preview_stage_qualified_import(
+    drive_id: UUID,
+    stage_id: UUID,
+    file: UploadFile = File(...),
+    custom_mapping: str | None = Form(None),
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))] = None,
+    service: Annotated[StageImportService, Depends(get_stage_import_service)] = None,
+) -> StageImportPreviewResponse:
+    """Preview company-provided qualified student list for a drive stage."""
+    filename = file.filename or "qualified.xlsx"
+    if not (
+        filename.lower().endswith(".xlsx")
+        or filename.lower().endswith(".xls")
+        or filename.lower().endswith(".csv")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Only .xlsx, .xls, or .csv files are supported.",
+        )
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    mapping_dict = None
+    if custom_mapping:
+        try:
+            mapping_dict = json.loads(custom_mapping)
+        except Exception:
+            pass
+
+    return await service.preview_stage_qualified_import(
+        drive_id=drive_id,
+        stage_id=stage_id,
+        file_bytes=file_bytes,
+        filename=filename,
+        custom_mapping=mapping_dict,
+    )
+
+
+@router.post("/{drive_id}/stages/{stage_id}/qualified/confirm", response_model=StageImportConfirmResponse)
+async def confirm_stage_qualified_import(
+    drive_id: UUID,
+    stage_id: UUID,
+    data: StageImportConfirmRequest,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))] = None,
+    service: Annotated[StageImportService, Depends(get_stage_import_service)] = None,
+) -> StageImportConfirmResponse:
+    """Confirm and commit qualified students to the drive stage."""
+    return await service.confirm_stage_qualified_import(
+        drive_id=drive_id,
+        stage_id=stage_id,
+        request=data,
+        current_user_id=current_user.user_id,
+    )
+
+
+@router.get("/{drive_id}/stages/{stage_id}/qualified/students", response_model=list[StageQualifiedStudentItem])
+async def list_stage_qualified_students(
+    drive_id: UUID,
+    stage_id: UUID,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))] = None,
+    service: Annotated[StageImportService, Depends(get_stage_import_service)] = None,
+) -> list[StageQualifiedStudentItem]:
+    """List all qualified students assigned to a specific drive stage."""
+    return await service.list_stage_qualified_students(drive_id, stage_id)
 
 
 @router.post("/{drive_id}/notify", response_model=ManualBroadcastResponse, status_code=202)

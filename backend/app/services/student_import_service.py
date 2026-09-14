@@ -86,6 +86,7 @@ class StudentImportService:
 
         seen_in_file: set[str] = set()
         preview_items: list[StudentMasterImportPreviewItem] = []
+        valid_items: list[StudentMasterImportItem] = []
 
         valid_count = 0
         dup_count = 0
@@ -151,6 +152,19 @@ class StudentImportService:
             else:
                 seen_in_file.add(clean_reg.lower())
                 valid_count += 1
+                valid_items.append(
+                    StudentMasterImportItem(
+                        roll_number=clean_reg,
+                        full_name=raw_name,
+                        branch_code=raw_branch,
+                        batch_year=raw_batch,
+                        cgpa=raw_cgpa,
+                        active_backlogs=raw_backlogs,
+                        personal_email=raw_email,
+                        phone_number=raw_phone,
+                        gender=raw_gender,
+                    )
+                )
 
             is_in_db = clean_reg.lower() in existing_db_map
             is_active = existing_db_map.get(clean_reg.lower(), False)
@@ -186,7 +200,8 @@ class StudentImportService:
             invalid_count=invalid_count,
             existing_in_db_count=existing_in_db_count,
             can_import=valid_count > 0,
-            preview_items=preview_items[:100],  # Return first 100 preview rows
+            preview_items=preview_items[:100],  # Return first 100 preview rows for UI display
+            valid_items=valid_items,  # Return ALL valid items for confirmation
         )
 
     async def confirm_student_import(

@@ -6,9 +6,11 @@ from typing import Sequence
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import func, select
 
 from app.models.audit_log import AuditLog
 from app.models.placement_stage import PlacementStage
+from app.models.stage_assignment import StageAssignment
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.placement_drive_repository import PlacementDriveRepository
 from app.repositories.placement_stage_repository import PlacementStageRepository
@@ -93,17 +95,38 @@ class PlacementStageService:
         stages = await self.stage_repo.list_by_drive_id(drive_id)
 
         if not is_student:
+            from sqlalchemy import func
+            stmt_counts = (
+                select(StageAssignment.stage_id, func.count(StageAssignment.id))
+                .where(StageAssignment.drive_id == drive_id)
+                .group_by(StageAssignment.stage_id)
+            )
+            count_rows = (await self.stage_repo.session.execute(stmt_counts)).all()
+            count_map = {row[0]: row[1] for row in count_rows}
+            for s in stages:
+                s.student_count = count_map.get(s.id, 0)
             return stages
 
-        # Student visibility filtering
+        # Student visibility & progress mapping
+        stmt_student_assign = (
+            select(StageAssignment)
+            .where(
+                StageAssignment.drive_id == drive_id,
+                StageAssignment.student_user_id == user_id,
+            )
+        )
+        student_assignments = (await self.stage_repo.session.execute(stmt_student_assign)).scalars().all()
+        student_map = {a.stage_id: a for a in student_assignments}
+
         visible_stages = []
         for stage in stages:
             if not stage.is_published:
                 continue
-            assignment = await self.assignment_repo.get_assignment(stage.id, user_id)
-            if assignment:
+            assign = student_map.get(stage.id)
+            if assign:
+                stage.my_status = assign.status
                 visible_stages.append(stage)
-        
+
         return visible_stages
 
     async def update_stage(self, drive_id: UUID, stage_id: UUID, data: PlacementStageUpdate, user_id: UUID) -> PlacementStage:
