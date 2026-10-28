@@ -9,69 +9,95 @@ export type BadgeVariant =
   | 'danger'
   | 'info'
   | 'neutral'
-  | 'outline';
+  | 'outline'
+  | 'lilac'
+  | 'obsidian';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
   size?: 'sm' | 'md' | 'lg';
   dot?: boolean;
+  bracket?: boolean;
+  mono?: boolean;
 }
 
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
-  ({ children, variant = 'default', size = 'md', dot = false, className = '', ...props }, ref) => {
+  (
+    {
+      children,
+      variant = 'default',
+      size = 'md',
+      dot = false,
+      bracket = false,
+      mono = false,
+      className = '',
+      ...props
+    },
+    ref
+  ) => {
     const sizeStyles = {
-      sm: 'px-2 py-0.5 text-[10px] gap-1 font-semibold',
-      md: 'px-2.5 py-1 text-xs gap-1.5 font-bold',
-      lg: 'px-3 py-1.5 text-xs gap-2 font-bold',
+      sm: 'px-1.5 py-0.5 text-[10px] gap-1 font-semibold',
+      md: 'px-2 py-0.5 text-[11px] gap-1.5 font-bold',
+      lg: 'px-2.5 py-1 text-xs gap-2 font-bold',
     };
 
     const variantStyles: Record<BadgeVariant, { container: string; dot: string }> = {
       default: {
-        container: 'bg-slate-100 text-slate-700 border border-slate-200/80',
-        dot: 'bg-slate-400',
+        container: 'bg-[#f4f5f8] text-slate-800 border border-slate-300',
+        dot: 'bg-slate-500',
       },
       neutral: {
-        container: 'bg-slate-100 text-slate-700 border border-slate-200/80',
+        container: 'bg-[#f4f5f8] text-slate-700 border border-slate-300',
         dot: 'bg-slate-400',
       },
       primary: {
-        container: 'bg-indigo-50 text-indigo-700 border border-indigo-200/80',
-        dot: 'bg-indigo-500',
+        container: 'bg-[#f6f3fc] text-[#4b3679] border border-[#c1aeee]',
+        dot: 'bg-[#9b86d9]',
+      },
+      lilac: {
+        container: 'bg-[#9b86d9] text-[#07080b] border border-[#07080b] shadow-[1px_1px_0px_#07080b]',
+        dot: 'bg-[#07080b]',
+      },
+      obsidian: {
+        container: 'bg-[#0b0c10] text-slate-100 border border-[#1f202b]',
+        dot: 'bg-[#10b981]',
       },
       secondary: {
-        container: 'bg-slate-800 text-white border border-slate-700',
+        container: 'bg-slate-900 text-white border border-slate-800',
         dot: 'bg-slate-300',
       },
       success: {
-        container: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
-        dot: 'bg-emerald-500',
+        container: 'bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]',
+        dot: 'bg-[#10b981]',
       },
       warning: {
-        container: 'bg-amber-50 text-amber-800 border border-amber-200/80',
-        dot: 'bg-amber-500',
+        container: 'bg-[#fffbeb] text-[#92400e] border border-[#fde68a]',
+        dot: 'bg-[#f59e0b]',
       },
       danger: {
-        container: 'bg-rose-50 text-rose-700 border border-rose-200/80',
-        dot: 'bg-rose-500',
+        container: 'bg-[#fff1f2] text-[#9f1239] border border-[#fecdd3]',
+        dot: 'bg-[#e11d48]',
       },
       info: {
-        container: 'bg-sky-50 text-sky-700 border border-sky-200/80',
-        dot: 'bg-sky-500',
+        container: 'bg-[#f6f3fc] text-[#4b3679] border border-[#ddd0f5]',
+        dot: 'bg-[#9b86d9]',
       },
       outline: {
-        container: 'bg-white text-slate-600 border border-slate-300',
+        container: 'bg-white text-slate-700 border border-slate-300',
         dot: 'bg-slate-400',
       },
     };
 
     const currentVariant = variantStyles[variant] || variantStyles.default;
+    const fontClass = mono ? 'font-mono uppercase tracking-wider' : 'font-sans tracking-tight';
 
     return (
       <span
         ref={ref}
-        className={`inline-flex items-center rounded-full tracking-wide transition-colors ${sizeStyles[size]} ${currentVariant.container} ${className}`}
+        className={`inline-flex items-center rounded-sm transition-colors ${fontClass} ${sizeStyles[size]} ${currentVariant.container} ${className}`}
         {...props}
       >
+        {bracket && <span className="text-slate-400 select-none font-mono mr-0.5">[</span>}
         {dot && (
           <span
             className={`h-1.5 w-1.5 rounded-full shrink-0 ${currentVariant.dot}`}
@@ -79,6 +105,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
           />
         )}
         <span>{children}</span>
+        {bracket && <span className="text-slate-400 select-none font-mono ml-0.5">]</span>}
       </span>
     );
   }
@@ -86,13 +113,13 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 Badge.displayName = 'Badge';
 
 /**
- * StatusBadge maps domain status strings to appropriate semantic badges.
+ * StatusBadge maps domain status strings to appropriate semantic badges with technical HUD styling.
  */
 export interface StatusBadgeProps extends Omit<BadgeProps, 'variant'> {
   status?: string | null;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status = 'ACTIVE', ...props }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status = 'ACTIVE', mono = true, bracket = false, ...props }) => {
   const safeStatus = status || 'ACTIVE';
   const normalized = safeStatus.toUpperCase().trim();
 
@@ -149,7 +176,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status = 'ACTIVE', ...
   }
 
   return (
-    <Badge variant={variant} dot {...props}>
+    <Badge variant={variant} dot mono={mono} bracket={bracket} {...props}>
       {safeStatus}
     </Badge>
   );

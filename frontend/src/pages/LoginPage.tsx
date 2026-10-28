@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '../services/apiClient';
 import { useForm } from 'react-hook-form';
-import { CampusFlowLogo } from '../components/common/CampusFlowLogo';
 import { extractErrorMessage } from '../utils/errorUtils';
 
 const loginSchema = z.object({
@@ -15,10 +14,10 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-
 export const LoginPage = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const { setSession } = useAuthStore();
   const navigate = useNavigate();
 
@@ -66,178 +65,145 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50 font-sans antialiased text-slate-900">
-      {/* LEFT PANEL: Clean Editorial Brand & Journey Showcase */}
-      <div className="relative hidden lg:flex lg:w-1/2 bg-slate-950 text-white p-12 xl:p-16 flex-col justify-between overflow-hidden border-r border-slate-800/80">
-        {/* Subtle Brand Ambient Highlight */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-slate-800/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex flex-col lg:flex-row bg-[#f4f5f8] font-sans antialiased text-slate-900 selection:bg-[#9b86d9] selection:text-black">
+      {/* ── LEFT PANEL: University Campus Panoramic Showcase ─────────────────── */}
+      <div className="relative hidden lg:flex lg:w-1/2 min-h-screen bg-slate-950 overflow-hidden flex-col justify-between p-8 xl:p-12 select-none border-r border-slate-800">
+        {/* Background Campus Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 scale-100 hover:scale-105"
+          style={{ backgroundImage: "url('/assets/images/campus_sunrise.jpg')" }}
+        />
+        {/* Soft Vignette Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-slate-950/60 pointer-events-none" />
 
-        {/* Top Branding */}
-        <div className="relative z-10">
-          <CampusFlowLogo size="lg" variant="light" showTagline />
-          <div className="mt-4 inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Campus Placement Workspace Active</span>
+        {/* TOP: Institutional Crest & Technical Metadata */}
+        <div className="relative z-10 flex items-start justify-between animate-fade-in">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-14 h-14 rounded-md bg-white/95 p-1.5 shadow-xl border border-white/40 flex items-center justify-center backdrop-blur-sm">
+              {/* University Insignia Logo */}
+              <svg viewBox="0 0 100 100" className="w-full h-full text-indigo-900" fill="none">
+                <circle cx="50" cy="50" r="45" stroke="#1e3a8a" strokeWidth="4" strokeDasharray="3 2" />
+                <circle cx="50" cy="50" r="38" fill="#1e40af" fillOpacity="0.08" stroke="#f59e0b" strokeWidth="2" />
+                {/* Flame / Diya */}
+                <path d="M50 22 C43 32 40 38 40 46 C40 54 45 58 50 58 C55 58 60 54 60 46 C60 38 57 32 50 22 Z" fill="#f59e0b" />
+                <path d="M50 28 C46 34 44 38 44 44 C44 49 47 52 50 52 C53 52 56 49 56 44 C56 38 54 34 50 28 Z" fill="#ef4444" />
+                {/* Diya Base */}
+                <path d="M30 54 C30 54 34 68 50 68 C66 68 70 54 70 54 L30 54 Z" fill="#1e3a8a" />
+                <rect x="42" y="68" width="16" height="4" rx="2" fill="#1e3a8a" />
+                <rect x="36" y="72" width="28" height="4" rx="2" fill="#f59e0b" />
+              </svg>
+            </div>
+            <div className="text-white drop-shadow-md">
+              <h3 className="text-xs font-black uppercase tracking-wider text-amber-300 font-display">
+                Kalasalingam Academy of Research and Education
+              </h3>
+              <p className="text-[11px] font-mono text-slate-200 tracking-wide">
+                Deemed to be University • Anand Nagar, Krishnankoil
+              </p>
+            </div>
+          </div>
+
+          <div className="font-mono text-[10px] text-white/70 tracking-widest text-right">
+            <div>[SEC.03]</div>
+            <div>X:0142 Y:0096</div>
           </div>
         </div>
 
-        {/* Center Value Proposition & Journey Pillars */}
-        <div className="relative z-10 space-y-8 my-auto max-w-lg">
-          <div className="space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
-              Campus Placement Operating Platform
-            </p>
-            <h1 className="text-3xl xl:text-4xl font-extrabold tracking-tight text-white leading-tight">
-              Your campus placement journey, organized in one place.
-            </h1>
-            <p className="text-sm xl:text-base text-slate-300 leading-relaxed font-normal">
-              Discover verified placement drives, prepare for company rounds, practice timed assessments, and track recruitment progress seamlessly.
-            </p>
+        {/* BOTTOM: Campus Career Platform Headline */}
+        <div className="relative z-10 text-white drop-shadow-lg space-y-3">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-sm bg-slate-950/75 backdrop-blur-md border border-white/20 text-[11px] font-mono font-semibold text-slate-200">
+            <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+            <span>CAMPUS PLACEMENT OPERATING PLATFORM ACTIVE</span>
           </div>
-
-          {/* Structured Journey Pillars */}
-          <div className="grid grid-cols-5 gap-2 pt-2">
-            {[
-              { step: '01', label: 'Discover' },
-              { step: '02', label: 'Prepare' },
-              { step: '03', label: 'Practice' },
-              { step: '04', label: 'Apply' },
-              { step: '05', label: 'Track' },
-            ].map((item) => (
-              <div
-                key={item.step}
-                className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 text-center space-y-1 shadow-2xs"
-              >
-                <div className="text-[10px] font-mono text-indigo-400 font-bold">{item.step}</div>
-                <div className="text-xs font-bold text-slate-200">{item.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Verified Institutional Core Highlights */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-start space-x-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/60">
-              <div className="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-white">Automated Eligibility Verification</h4>
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                  Real-time validation against verified CGPA, batch year, and branch criteria.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/60">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600/20 text-emerald-300 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-white">Full-Funnel Stage Management</h4>
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                  Clear stage timelines from aptitude assessments to technical rounds and offers.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Footer Info */}
-        <div className="relative z-10 pt-6 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
-          <span>CampusFlow • Institutional Edition</span>
-          <span>Security Hardened & RBAC Protected</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display tracking-tight leading-snug max-w-lg">
+            Institutional Career Intelligence & Drive Governance
+          </h2>
+          <p className="text-xs font-medium text-slate-300 max-w-md leading-relaxed font-sans">
+            Authoritative platform for institutional placement drives, automated eligibility validation, assessment rounds, and talent progression.
+          </p>
         </div>
       </div>
 
-      {/* RIGHT PANEL: Clean Authentication Form */}
-      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-16 xl:px-24 py-12">
-        <div className="w-full max-w-md mx-auto space-y-7">
-          {/* Mobile Logo View */}
-          <div className="lg:hidden flex flex-col items-center text-center pb-2">
-            <CampusFlowLogo size="lg" showTagline />
-          </div>
+      {/* ── RIGHT PANEL: Editorial Minimalist Login Form ─────────────────── */}
+      <div className="flex-1 flex flex-col justify-between p-6 sm:p-12 lg:p-16 xl:p-20 bg-white border-l border-slate-200">
+        <div className="w-full max-w-md mx-auto space-y-7 my-auto">
+          {/* Header */}
+          <div className="space-y-2.5">
+            <div className="flex items-center space-x-2 font-mono text-[11px] text-[#6d50b4] font-bold uppercase tracking-widest">
+              <span>[SEC.01]</span>
+              <span>//</span>
+              <span>AUTH.GATEWAY</span>
+            </div>
 
-          {/* Form Header */}
-          <div className="space-y-1.5">
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Sign in to your account
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Welcome back to CampusFlow. Enter your credentials to access your portal.
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 font-display tracking-tight">
+              Sign In // <span className="text-[#9b86d9]">CampusFlow</span>
+            </h1>
+
+            <p className="font-mono text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Student Information System & Placement Intelligence
+            </p>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Institutional portal for real-time placement drives, eligibility validation, assessment rounds, and career progression.
             </p>
           </div>
 
           {/* Error Alert Box (Preserves .bg-red-50 for Playwright E2E assertion) */}
           {serverError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-xs sm:text-sm flex items-start space-x-3 animate-fade-in" role="alert">
-              <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div
+              className="bg-red-50 border border-red-300 text-red-800 p-3.5 rounded-sm text-xs flex items-start space-x-2.5 animate-fade-in shadow-[2px_2px_0px_#fca5a5]"
+              role="alert"
+            >
+              <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="flex-1">
-                <p className="font-bold">Authentication failed</p>
-                <p className="text-xs text-red-600 mt-0.5 leading-relaxed">{serverError}</p>
+              <div className="flex-1 font-sans">
+                <p className="font-bold">Login Failed</p>
+                <p className="text-xs text-red-700 mt-0.5 leading-relaxed">{serverError}</p>
               </div>
             </div>
           )}
 
           {/* Form */}
           <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-            {/* Email Field */}
+            {/* Registration No. / Email */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Email address or Registration Number
+              <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Registration No. / University Email
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  inputMode="text"
-                  autoComplete="username"
-                  data-testid="input-identifier"
-                  placeholder="student1@campusflow.edu or 99230041249"
-                  {...register('email')}
-                  className="block w-full pl-10 pr-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition shadow-2xs"
-                />
-              </div>
-
+              <input
+                type="text"
+                inputMode="text"
+                autoComplete="username"
+                data-testid="input-identifier"
+                placeholder="e.g. 99230041249 or student@campusflow.edu"
+                {...register('email')}
+                className="block w-full px-3.5 py-2.5 bg-[#f5f6f9] border border-slate-300 focus:border-[#9b86d9] focus:bg-white rounded-sm text-xs sm:text-sm placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#9b86d9]/30 transition shadow-xs"
+              />
               {errors.email && (
-                <p className="mt-1.5 text-xs font-semibold text-rose-600">
+                <p className="mt-1 font-mono text-[11px] font-semibold text-rose-600">
                   {errors.email.message}
                 </p>
               )}
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Password
+            {/* Password */}
+            <div className="relative">
+              <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Security Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  placeholder="••••••••••••"
+                  placeholder="Enter your password"
                   {...register('password')}
-                  className="block w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition shadow-2xs"
+                  className="block w-full px-3.5 py-2.5 bg-[#f5f6f9] border border-slate-300 focus:border-[#9b86d9] focus:bg-white rounded-sm text-xs sm:text-sm placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#9b86d9]/30 transition pr-10 shadow-xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-700 focus:outline-none cursor-pointer"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
@@ -253,79 +219,104 @@ export const LoginPage = () => {
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1.5 text-xs font-semibold text-rose-600">
+                <p className="mt-1 font-mono text-[11px] font-semibold text-rose-600">
                   {errors.password.message}
                 </p>
               )}
             </div>
 
-            {/* Primary Submit CTA */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl shadow-sm shadow-indigo-600/20 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
-            >
-              {isSubmitting ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                <span>Sign in</span>
-              )}
-            </button>
+            {/* Remember Me & SIGN IN Button */}
+            <div className="flex items-center justify-between pt-2">
+              <label className="flex items-center space-x-2 text-xs text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded-xs border-slate-300 text-[#6d50b4] focus:ring-[#9b86d9] cursor-pointer"
+                />
+                <span className="font-medium">Remember me</span>
+              </label>
 
-            {/* Account Registration Entry Point */}
-            <div className="text-center pt-2">
-              <p className="text-xs text-slate-500">
-                New to CampusFlow?{' '}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex items-center justify-center px-7 py-2.5 rounded-sm bg-[#0a0b10] hover:bg-[#1f202b] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-white text-xs font-mono font-bold uppercase tracking-wider shadow-[3px_3px_0px_#9b86d9] transition border border-[#0a0b10] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>AUTHENTICATING...</span>
+                  </div>
+                ) : (
+                  <span>SIGN IN</span>
+                )}
+              </button>
+            </div>
+
+            {/* Account Registration Link */}
+            <div className="pt-2 text-center sm:text-left">
+              <p className="text-xs text-slate-600">
+                New candidate to CampusFlow?{' '}
                 <Link
                   to="/register"
-                  className="font-bold text-indigo-600 hover:text-indigo-700 underline underline-offset-2 transition"
+                  className="font-bold text-[#6d50b4] hover:text-[#4b3679] underline underline-offset-4 decoration-[#9b86d9] transition"
                 >
-                  Register your account
+                  Register your student account
                 </Link>
               </p>
             </div>
           </form>
 
-
-          {/* Quick Demo Credentials Helper */}
-          <div className="pt-4 border-t border-slate-200">
+          {/* ── Demo Access Selector (Tactile Hardware Keys) ───────────────── */}
+          <div className="pt-6 border-t border-slate-200">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Demo access
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                [SYS.ACCESS] ONE-CLICK DEMO KEYS
               </span>
-              <span className="text-[10px] text-slate-400">
-                Pre-seeded test accounts
+              <span className="text-[10px] font-mono text-[#6d50b4] font-semibold">
+                PRE-AUTHENTICATED
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2.5">
               <button
                 type="button"
                 onClick={() => handleFillDemo('student1@campusflow.edu', 'TestStudent@123')}
-                className="p-2.5 text-center rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 bg-white transition group shadow-2xs"
+                className="p-2.5 text-center rounded-sm border border-slate-300 hover:border-[#9b86d9] hover:bg-[#f6f3fc] bg-white transition group shadow-[2px_2px_0px_rgba(10,11,16,0.06)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
               >
-                <span className="block text-xs font-bold text-slate-700 group-hover:text-indigo-600">Student</span>
-                <span className="block text-[10px] text-slate-400 font-mono mt-0.5">student1</span>
+                <span className="block text-xs font-bold text-slate-900 group-hover:text-[#5a4195] font-display">Student</span>
+                <span className="block text-[10px] text-slate-500 font-mono mt-0.5">student1</span>
               </button>
               <button
                 type="button"
-                onClick={() => handleFillDemo('officer@campusflow.edu', 'TestOfficer@123')}
-                className="p-2.5 text-center rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 bg-white transition group shadow-2xs"
+                onClick={() => handleFillDemo('dhilipanrajkumar@gmail.com', 'TestOfficer@123')}
+                className="p-2.5 text-center rounded-sm border border-slate-300 hover:border-[#9b86d9] hover:bg-[#f6f3fc] bg-white transition group shadow-[2px_2px_0px_rgba(10,11,16,0.06)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
               >
-                <span className="block text-xs font-bold text-slate-700 group-hover:text-indigo-600">Officer</span>
-                <span className="block text-[10px] text-slate-400 font-mono mt-0.5">officer</span>
+                <span className="block text-xs font-bold text-slate-900 group-hover:text-[#5a4195] font-display">Officer</span>
+                <span className="block text-[10px] text-slate-500 font-mono mt-0.5 truncate">officer</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleFillDemo('admin@campusflow.edu', 'TestAdmin@123')}
-                className="p-2.5 text-center rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 bg-white transition group shadow-2xs"
+                className="p-2.5 text-center rounded-sm border border-slate-300 hover:border-[#9b86d9] hover:bg-[#f6f3fc] bg-white transition group shadow-[2px_2px_0px_rgba(10,11,16,0.06)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
               >
-                <span className="block text-xs font-bold text-slate-700 group-hover:text-indigo-600">Admin</span>
-                <span className="block text-[10px] text-slate-400 font-mono mt-0.5">admin</span>
+                <span className="block text-xs font-bold text-slate-900 group-hover:text-[#5a4195] font-display">Admin</span>
+                <span className="block text-[10px] text-slate-500 font-mono mt-0.5">admin</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* ── Footer ────────────────────────────────────────────────────────── */}
+        <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 mt-6 font-mono">
+          <div className="flex items-center space-x-3 text-slate-500 text-xs">
+            <span className="hover:text-[#9b86d9] transition cursor-pointer font-bold">KARE</span>
+            <span>•</span>
+            <span className="hover:text-[#9b86d9] transition cursor-pointer font-bold">SIS</span>
+            <span>•</span>
+            <span className="hover:text-[#9b86d9] transition cursor-pointer font-bold">PLACEMENT</span>
+          </div>
+          <div className="text-[11px] text-slate-500 text-center sm:text-right">
+            [SYS.BUILD 2.4.0] // CAMPUSFLOW OPERATING PLATFORM
           </div>
         </div>
       </div>

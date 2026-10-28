@@ -64,6 +64,23 @@ export const DriveDetailsPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Edit Drive modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isEditingDrive, setIsEditingDrive] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editJobRole, setEditJobRole] = useState<string>('');
+  const [editDescription, setEditDescription] = useState<string>('');
+  const [editCtcLpa, setEditCtcLpa] = useState<string>('');
+  const [editStipendMonthly, setEditStipendMonthly] = useState<string>('');
+  const [editLocation, setEditLocation] = useState<string>('');
+  const [editBondDetails, setEditBondDetails] = useState<string>('');
+  const [editRegistrationDeadline, setEditRegistrationDeadline] = useState<string>('');
+  const [editMinCgpa, setEditMinCgpa] = useState<string>('');
+  const [editMaxBacklogs, setEditMaxBacklogs] = useState<string>('0');
+  const [editEligibleBranches, setEditEligibleBranches] = useState<string[]>([]);
+  const [editEligibleBatchYears, setEditEligibleBatchYears] = useState<string>('2027');
+
   // ---------------------------------------------------------------------------
   // Applicant Workspace State (Officer / Admin Only)
   // ---------------------------------------------------------------------------
@@ -362,6 +379,88 @@ export const DriveDetailsPage: React.FC = () => {
     } catch (err: any) {
       setDeleteError(err.response?.data?.detail || 'Failed to delete placement drive.');
       setIsDeleting(false);
+    }
+  };
+
+  const handleOpenEditModal = () => {
+    if (!drive) return;
+    setEditTitle(drive.title || '');
+    setEditJobRole(drive.job_role || (drive as any).role_title || '');
+    setEditDescription(drive.description || '');
+    setEditCtcLpa(drive.ctc_lpa != null ? String(drive.ctc_lpa) : '');
+    setEditStipendMonthly(drive.stipend_monthly != null ? String(drive.stipend_monthly) : '');
+    setEditLocation(drive.location || '');
+    setEditBondDetails(drive.bond_details || '');
+
+    if (drive.registration_deadline) {
+      const dt = new Date(drive.registration_deadline);
+      const formatted = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      setEditRegistrationDeadline(formatted);
+    } else {
+      setEditRegistrationDeadline('');
+    }
+
+    const crit = (drive.eligibility_criteria as any)?.criteria || drive.eligibility_criteria || {};
+    setEditMinCgpa(crit.min_cgpa != null ? String(crit.min_cgpa) : '');
+    setEditMaxBacklogs(crit.max_active_backlogs != null ? String(crit.max_active_backlogs) : '0');
+    setEditEligibleBranches(crit.eligible_branches || []);
+    setEditEligibleBatchYears(
+      crit.eligible_batch_years && crit.eligible_batch_years.length > 0
+        ? crit.eligible_batch_years.join(', ')
+        : '2027'
+    );
+    setEditError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveDriveEdit = async () => {
+    if (!id || !drive) return;
+    if (!editTitle.trim()) {
+      setEditError('Drive title is required.');
+      return;
+    }
+    if (!editJobRole.trim()) {
+      setEditError('Job role is required.');
+      return;
+    }
+
+    setIsEditingDrive(true);
+    setEditError(null);
+
+    try {
+      const parsedBatchYears = editEligibleBatchYears
+        .split(',')
+        .map((y) => parseInt(y.trim(), 10))
+        .filter((y) => !isNaN(y));
+
+      const payload = {
+        title: editTitle.trim(),
+        job_role: editJobRole.trim(),
+        description: editDescription.trim() || undefined,
+        ctc_lpa: editCtcLpa ? parseFloat(editCtcLpa) : undefined,
+        stipend_monthly: editStipendMonthly ? parseFloat(editStipendMonthly) : undefined,
+        location: editLocation.trim() || undefined,
+        bond_details: editBondDetails.trim() || undefined,
+        registration_deadline: editRegistrationDeadline ? new Date(editRegistrationDeadline).toISOString() : undefined,
+        eligibility_criteria: {
+          min_cgpa: editMinCgpa ? parseFloat(editMinCgpa) : 0,
+          max_active_backlogs: editMaxBacklogs !== '' ? parseInt(editMaxBacklogs, 10) : 0,
+          eligible_branches: editEligibleBranches.length > 0 ? editEligibleBranches : undefined,
+          eligible_batch_years: parsedBatchYears.length > 0 ? parsedBatchYears : [2027],
+        },
+      };
+
+      await driveService.updateDrive(id, payload as any);
+      setStatusUpdateSuccess('Drive details updated successfully.');
+      setTimeout(() => setStatusUpdateSuccess(null), 6000);
+      setIsEditModalOpen(false);
+      await fetchDriveDetails();
+    } catch (err: any) {
+      setEditError(err?.response?.data?.detail || 'Failed to update placement drive.');
+    } finally {
+      setIsEditingDrive(false);
     }
   };
 
@@ -793,6 +892,21 @@ export const DriveDetailsPage: React.FC = () => {
               }
             >
               Broadcast Notification
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenEditModal}
+              className="border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100/80 font-semibold"
+              leftIcon={
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              }
+              data-testid="officer-edit-drive-btn"
+            >
+              Edit Drive
             </Button>
 
             <Button
@@ -1945,6 +2059,243 @@ export const DriveDetailsPage: React.FC = () => {
                 data-testid="confirm-delete-drive-btn"
               >
                 {isDeleting ? 'Deleting...' : 'Delete Drive'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {/* Edit Placement Drive Modal */}
+      {isEditModalOpen && (
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            if (!isEditingDrive) {
+              setIsEditModalOpen(false);
+              setEditError(null);
+            }
+          }}
+          title="Edit Placement Drive Details"
+        >
+          <div className="space-y-4 max-h-[75vh] overflow-y-auto px-1 pr-2">
+            {editError && (
+              <Alert variant="danger" onClose={() => setEditError(null)}>
+                {editError}
+              </Alert>
+            )}
+
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Drive Title <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="e.g. Google — Software Development Engineer"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Job Role / Designation <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  value={editJobRole}
+                  onChange={(e) => setEditJobRole(e.target.value)}
+                  placeholder="e.g. Software Engineer (SDE-1)"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Compensation & Location */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Package (CTC in LPA)
+                </label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={editCtcLpa}
+                  onChange={(e) => setEditCtcLpa(e.target.value)}
+                  placeholder="e.g. 18.5"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Monthly Stipend (₹)
+                </label>
+                <Input
+                  type="number"
+                  step="1000"
+                  min="0"
+                  value={editStipendMonthly}
+                  onChange={(e) => setEditStipendMonthly(e.target.value)}
+                  placeholder="e.g. 75000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Work Location
+                </label>
+                <Input
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder="e.g. Hyderabad / Hybrid"
+                />
+              </div>
+            </div>
+
+            {/* Timeline & Eligibility */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Registration Deadline
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={editRegistrationDeadline}
+                  onChange={(e) => setEditRegistrationDeadline(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Minimum CGPA
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  value={editMinCgpa}
+                  onChange={(e) => setEditMinCgpa(e.target.value)}
+                  placeholder="e.g. 7.50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Max Active Backlogs
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={editMaxBacklogs}
+                  onChange={(e) => setEditMaxBacklogs(e.target.value)}
+                  placeholder="e.g. 0"
+                />
+              </div>
+            </div>
+
+            {/* Batch Years & Bond */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Eligible Batch Year(s)
+                </label>
+                <Input
+                  value={editEligibleBatchYears}
+                  onChange={(e) => setEditEligibleBatchYears(e.target.value)}
+                  placeholder="e.g. 2027, 2026"
+                />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Comma-separated years (e.g. 2027, 2026)</span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Bond / Agreement Details
+                </label>
+                <Input
+                  value={editBondDetails}
+                  onChange={(e) => setEditBondDetails(e.target.value)}
+                  placeholder="e.g. No Bond / 1 Year Service Agreement"
+                />
+              </div>
+            </div>
+
+            {/* Eligible Branches Selection */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Eligible Branches
+              </label>
+              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                {['CSE', 'ECE', 'IT', 'MECH', 'CIVIL', 'EEE', 'AI&DS', 'AI&ML', 'CSIT', 'ECM', 'BIOTECH'].map((bCode) => {
+                  const isChecked = editEligibleBranches.includes(bCode);
+                  return (
+                    <button
+                      key={bCode}
+                      type="button"
+                      onClick={() => {
+                        if (isChecked) {
+                          setEditEligibleBranches(editEligibleBranches.filter((b) => b !== bCode));
+                        } else {
+                          setEditEligibleBranches([...editEligibleBranches, bCode]);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                        isChecked
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{bCode}</span>
+                      {isChecked && (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Click branch chips to toggle eligibility. If none selected, all branches are eligible.
+              </span>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Job Description & Key Responsibilities
+              </label>
+              <Textarea
+                rows={3}
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Enter job roles, responsibilities, requirements, and hiring process details..."
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditError(null);
+                }}
+                disabled={isEditingDrive}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSaveDriveEdit}
+                disabled={isEditingDrive}
+                isLoading={isEditingDrive}
+                className="bg-indigo-600 hover:bg-indigo-700 shadow-xs"
+              >
+                {isEditingDrive ? 'Saving Changes...' : 'Save Changes'}
               </Button>
             </div>
           </div>

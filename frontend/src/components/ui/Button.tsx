@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'lilac';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -24,29 +24,31 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    // Base styling
+    // Base styling with expert UI designer tactile feedback
     const baseStyles =
-      'inline-flex items-center justify-center font-bold transition duration-150 ease-in-out select-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]';
+      'inline-flex items-center justify-center font-bold font-sans transition duration-150 ease-in-out select-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50';
 
     // Size variants
     const sizeStyles = {
-      sm: 'text-xs px-3 py-1.5 rounded-lg gap-1.5',
-      md: 'text-xs px-4 py-2.5 rounded-xl gap-2',
-      lg: 'text-sm px-6 py-3 rounded-xl gap-2.5',
+      sm: 'text-xs px-3 py-1.5 rounded-sm gap-1.5',
+      md: 'text-xs px-4 py-2.5 rounded-md gap-2 tracking-tight',
+      lg: 'text-sm px-6 py-3 rounded-md gap-2.5 tracking-tight',
     };
 
     // Variant styling
     const variantStyles = {
       primary:
-        'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 focus-visible:ring-indigo-500 border border-transparent',
+        'bg-[#0a0b10] hover:bg-[#1f202b] text-white shadow-[2px_2px_0px_#9b86d9] hover:border-[#9b86d9] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-[#9b86d9] border border-[#0a0b10]',
+      lilac:
+        'bg-[#9b86d9] hover:bg-[#886ee0] text-[#07080b] font-extrabold border border-[#07080b] shadow-[2px_2px_0px_#07080b] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-[#9b86d9]',
       secondary:
-        'bg-slate-900 hover:bg-slate-800 text-white shadow-sm shadow-slate-900/10 focus-visible:ring-slate-700 border border-transparent',
+        'bg-[#12131b] hover:bg-[#1d1f2b] text-white border border-[#272a3a] shadow-[2px_2px_0px_rgba(10,11,16,0.3)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-[#9b86d9]',
       outline:
-        'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs focus-visible:ring-slate-400 hover:border-slate-300',
+        'bg-white hover:bg-[#f6f3fc] text-slate-800 border border-slate-300 shadow-[1px_1px_0px_rgba(10,11,16,0.08)] hover:border-slate-800 hover:text-[#4b3679] active:translate-x-[1px] active:translate-y-[1px] focus-visible:ring-[#9b86d9]',
       ghost:
-        'bg-transparent hover:bg-slate-100/80 text-slate-600 hover:text-slate-900 focus-visible:ring-slate-400 border border-transparent',
+        'bg-transparent hover:bg-[#f6f3fc] text-slate-700 hover:text-[#5a4195] border border-transparent',
       danger:
-        'bg-rose-600 hover:bg-rose-700 text-white shadow-sm shadow-rose-600/20 focus-visible:ring-rose-500 border border-transparent',
+        'bg-[#e11d48] hover:bg-[#be123c] text-white border border-[#9f1239] shadow-[2px_2px_0px_#881337] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-rose-500',
     };
 
     return (

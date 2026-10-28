@@ -5,7 +5,7 @@ export const TableContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HT
     return (
       <div
         ref={ref}
-        className={`w-full overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-xs ${className}`}
+        className={`w-full overflow-x-auto rounded-md border border-slate-300 bg-white shadow-[2px_2px_0px_rgba(10,11,16,0.04)] ${className}`}
         {...props}
       >
         {children}
@@ -20,7 +20,7 @@ export const Table = forwardRef<HTMLTableElement, React.TableHTMLAttributes<HTML
     return (
       <table
         ref={ref}
-        className={`w-full text-left text-xs text-slate-600 divide-y divide-slate-100 ${className}`}
+        className={`w-full text-left text-xs text-slate-700 divide-y divide-slate-200 ${className}`}
         {...props}
       >
         {children}
@@ -35,7 +35,7 @@ export const TableHeader = forwardRef<HTMLTableSectionElement, React.HTMLAttribu
     return (
       <thead
         ref={ref}
-        className={`bg-slate-50/90 text-slate-500 font-bold uppercase tracking-wider text-[11px] ${className}`}
+        className={`bg-[#f4f5f8] text-slate-600 font-mono font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 ${className}`}
         {...props}
       >
         {children}
@@ -65,7 +65,7 @@ export const TableRow = forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTM
     return (
       <tr
         ref={ref}
-        className={`hover:bg-slate-50/80 transition-colors duration-100 ${className}`}
+        className={`hover:bg-[#f6f3fc]/70 transition-colors duration-100 ${className}`}
         {...props}
       >
         {children}
@@ -80,7 +80,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, React.ThHTMLAttributes
     return (
       <th
         ref={ref}
-        className={`px-4 py-3.5 font-bold text-slate-700 whitespace-nowrap ${className}`}
+        className={`px-4 py-3 font-mono font-bold text-slate-700 whitespace-nowrap tracking-wider ${className}`}
         {...props}
       >
         {children}
@@ -95,7 +95,7 @@ export const TableCell = forwardRef<HTMLTableCellElement, React.TdHTMLAttributes
     return (
       <td
         ref={ref}
-        className={`px-4 py-3.5 text-slate-700 whitespace-nowrap align-middle ${className}`}
+        className={`px-4 py-3 text-slate-800 whitespace-nowrap align-middle text-xs ${className}`}
         {...props}
       >
         {children}
@@ -127,7 +127,7 @@ export const TableEmpty: React.FC<{ colSpan: number; message?: string }> = ({
               d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
             />
           </svg>
-          <span className="text-xs font-semibold text-slate-500">{message}</span>
+          <span className="text-xs font-mono font-semibold text-slate-500 uppercase tracking-wider">{message}</span>
         </div>
       </td>
     </tr>

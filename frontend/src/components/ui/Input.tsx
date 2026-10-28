@@ -39,9 +39,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </Label>
         )}
-        <div className="relative rounded-xl">
+        <div className="relative rounded-md">
           {leftIcon && (
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
               {leftIcon}
             </div>
           )}
@@ -52,23 +52,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             aria-invalid={error ? 'true' : 'false'}
             aria-describedby={describedBy}
-            className={`w-full text-sm font-medium bg-white text-slate-900 placeholder:text-slate-400 border rounded-xl transition duration-150 ease-in-out focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
-              leftIcon ? 'pl-10' : 'pl-3.5'
-            } ${rightIcon ? 'pr-10' : 'pr-3.5'} py-2.5 ${
+            className={`w-full text-xs sm:text-sm font-medium bg-white text-slate-900 placeholder:text-slate-400 border rounded-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
+              leftIcon ? 'pl-9' : 'pl-3'
+            } ${rightIcon ? 'pr-9' : 'pr-3'} py-2.5 ${
               error
                 ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20 text-rose-900 placeholder:text-rose-300'
-                : 'border-slate-200 hover:border-slate-300 focus:border-indigo-600 focus:ring-indigo-600/20'
+                : 'border-slate-300 hover:border-slate-400 focus:border-[#9b86d9] focus:ring-[#9b86d9]/30'
             } ${className}`}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
               {rightIcon}
             </div>
           )}
         </div>
         {error && (
-          <p id={errorId} className="mt-1.5 text-xs font-semibold text-rose-600 animate-fade-in" role="alert">
+          <p id={errorId} className="mt-1.5 text-xs font-mono font-semibold text-rose-600 animate-fade-in" role="alert">
             {error}
           </p>
         )}

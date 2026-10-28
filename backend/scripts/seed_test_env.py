@@ -113,15 +113,15 @@ async def seed_data():
             print("[OK] Created synthetic Admin user: admin@campusflow.edu")
 
         # Officer
-        officer_email = "officer@campusflow.edu"
-        res = await session.execute(select(User).where(User.email == officer_email))
+        officer_email = "dhilipanrajkumar@gmail.com"
+        res = await session.execute(select(User).where(User.email.in_([officer_email, "officer@campusflow.edu"])))
         officer = res.scalar_one_or_none()
         if not officer:
             officer = User(
                 id=uuid4(),
                 email=officer_email,
                 password_hash=hash_password("TestOfficer@123"),
-                full_name="Synthetic Placement Officer",
+                full_name="Mr. Dhilipanrajkumar",
                 role="OFFICER",
                 is_active=True,
                 must_change_password=False,
@@ -129,7 +129,11 @@ async def seed_data():
             session.add(officer)
             await session.commit()
             await session.refresh(officer)
-            print("[OK] Created synthetic Officer user: officer@campusflow.edu")
+            print(f"[OK] Created Officer user: {officer_email}")
+        else:
+            officer.full_name = "Mr. Dhilipanrajkumar"
+            officer.email = officer_email
+            await session.commit()
 
         # Students
         students_spec = [

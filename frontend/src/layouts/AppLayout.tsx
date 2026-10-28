@@ -80,46 +80,36 @@ export const AppLayout: React.FC = () => {
   };
 
   const navItemClass = (active: boolean) =>
-    `w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 group ${
+    `w-full flex items-center space-x-3 px-3 py-2.5 rounded-sm text-xs font-semibold transition-all duration-150 group select-none ${
       active
-        ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold'
-        : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+        ? 'bg-[#9b86d9] text-[#07080b] shadow-[2px_2px_0px_#ffffff] font-extrabold border border-[#9b86d9]'
+        : 'text-slate-300 hover:text-white hover:bg-[#1a1b24]'
     }`;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 antialiased font-sans">
+    <div className="min-h-screen bg-[#f4f5f8] flex flex-col md:flex-row text-slate-900 antialiased font-sans">
       {/* ========================================================================= */}
       {/* 1. PERSISTENT WORKSPACE SIDEBAR (DESKTOP)                                 */}
       {/* ========================================================================= */}
       <aside
-        className={`hidden md:flex flex-col bg-slate-950 text-slate-300 border-r border-slate-800/80 sticky top-0 h-screen transition-all duration-200 ease-in-out z-30 select-none ${
+        className={`hidden md:flex flex-col bg-[#0b0c10] text-slate-300 border-r border-[#1a1b24] sticky top-0 h-screen transition-all duration-200 ease-in-out z-30 select-none ${
           collapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Brand / Logo Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800/80">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-[#1a1b24] bg-[#07080b]">
           <div
             onClick={() => navigate('/')}
             className="flex items-center space-x-2.5 cursor-pointer overflow-hidden group"
           >
-            <CampusFlowLogo size="sm" variant="light" />
-            {!collapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="font-extrabold text-white tracking-tight text-sm leading-tight">
-                  Campus<span className="text-indigo-400">Flow</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                  Placement Workspace
-                </span>
-              </div>
-            )}
+            <CampusFlowLogo size="sm" variant="light" showTagline={false} />
           </div>
 
           <button
             onClick={toggleSidebar}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="p-1.5 rounded-sm text-slate-400 hover:text-white hover:bg-[#1a1b24] transition focus:outline-none focus:ring-1 focus:ring-[#9b86d9]"
           >
             <svg
               className={`w-4 h-4 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`}
@@ -135,9 +125,9 @@ export const AppLayout: React.FC = () => {
         {/* Navigation Content (Semantic <nav> container ensuring E2E selector satisfaction) */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 scrollbar-thin">
           {/* USER IDENTITY CHIP (CRITICAL FOR E2E TEST SELECTORS: Synthetic Student One (STUDENT)) */}
-          <div className="px-2.5 py-2 rounded-xl bg-slate-900/90 border border-slate-800 shadow-xs">
+          <div className="px-2.5 py-2 rounded-sm bg-[#13141d] border border-[#222434] shadow-[1px_1px_0px_rgba(0,0,0,0.5)]">
             <div className="flex items-center space-x-2.5">
-              <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+              <div className="w-7 h-7 rounded-sm bg-[#9b86d9] text-[#07080b] flex items-center justify-center font-bold text-xs shadow-xs shrink-0 font-mono">
                 {user?.full_name?.charAt(0).toUpperCase() || 'U'}
               </div>
               {!collapsed && (
@@ -145,9 +135,9 @@ export const AppLayout: React.FC = () => {
                   <div className="text-xs font-bold text-white truncate">
                     {user?.full_name} ({user?.role})
                   </div>
-                  <div className="text-[10px] text-emerald-400 font-semibold flex items-center space-x-1.5 mt-0.5">
+                  <div className="text-[10px] text-emerald-400 font-mono font-semibold flex items-center space-x-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Active Session</span>
+                    <span>SESSION ACTIVE</span>
                   </div>
                 </div>
               )}
@@ -227,6 +217,24 @@ export const AppLayout: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                   {!collapsed && <span>Practice Assessments</span>}
+                </button>
+
+                <button
+                  onClick={() => navigate('/mock-interviews')}
+                  title="Mock Interviews"
+                  className={navItemClass(isActiveRoute('/mock-interviews'))}
+                >
+                  <svg className="w-4 h-4 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
+                  </svg>
+                  {!collapsed && (
+                    <div className="flex items-center justify-between flex-1">
+                      <span>Mock Interviews</span>
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                        AI
+                      </span>
+                    </div>
+                  )}
                 </button>
               </div>
 
@@ -608,8 +616,7 @@ export const AppLayout: React.FC = () => {
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center space-x-2">
-                <CampusFlowLogo size="sm" variant="light" />
-                <span className="font-extrabold text-white text-sm">CampusFlow</span>
+                <CampusFlowLogo size="sm" variant="light" showTagline={false} />
               </div>
               <button
                 onClick={closeMobileDrawer}
@@ -665,6 +672,18 @@ export const AppLayout: React.FC = () => {
                 className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition"
               >
                 Practice Assessments
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/mock-interviews');
+                  closeMobileDrawer();
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold text-indigo-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between"
+              >
+                <span>Mock Interviews</span>
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                  AI
+                </span>
               </button>
               {user?.role === 'STUDENT' && (
                 <>
@@ -768,16 +787,28 @@ export const AppLayout: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. MAIN WORKSPACE CONTAINER                                              */}
+      {/* 3. MAIN WORKSPACE CONTAINER (WITH EDITORIAL TECH GRID BACKGROUND)         */}
       {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative bg-[#f4f5f8] min-h-screen bg-tech-grid">
+        {/* Subtle Institutional Watermark Logo Overlay */}
+        <div
+          className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center overflow-hidden"
+          aria-hidden="true"
+        >
+          <img
+            src="/assets/images/kare_logo.png"
+            alt=""
+            className="w-[450px] h-[450px] sm:w-[600px] sm:h-[600px] md:w-[680px] md:h-[680px] max-w-[85vw] max-h-[85vh] object-contain opacity-[0.03] select-none pointer-events-none"
+          />
+        </div>
+
         {/* TOP HEADER */}
-        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-xs border-b border-slate-200/80 shadow-xs h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-xs border-b border-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.03)] h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Left: Mobile hamburger + Workspace Context */}
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setMobileDrawerOpen(true)}
-              className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="md:hidden p-2 rounded-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition focus:outline-none focus:ring-1 focus:ring-[#9b86d9]"
               aria-label="Open navigation drawer"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -785,10 +816,10 @@ export const AppLayout: React.FC = () => {
               </svg>
             </button>
 
-            <div className="flex items-center space-x-2 text-xs text-slate-500 font-medium">
-              <span className="font-bold text-slate-800">CampusFlow Workspace</span>
-              <span className="text-slate-300">&bull;</span>
-              <span className="text-indigo-600 font-semibold">{user?.role} Portal</span>
+            <div className="flex items-center space-x-2 text-xs font-mono">
+              <span className="font-bold text-slate-900 tracking-tight font-sans">CampusFlow</span>
+              <span className="text-slate-300 select-none">//</span>
+              <span className="text-[#6d50b4] font-bold tracking-wider uppercase text-[11px]">{user?.role} PORTAL</span>
             </div>
           </div>
 
@@ -798,8 +829,8 @@ export const AppLayout: React.FC = () => {
 
             <button
               onClick={() => navigate('/notifications')}
-              className={`p-2 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition relative flex items-center space-x-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                isActiveRoute('/notifications') ? 'bg-indigo-50 text-indigo-700' : ''
+              className={`p-2 rounded-sm text-slate-600 hover:text-[#4b3679] hover:bg-[#f6f3fc] transition relative flex items-center space-x-1.5 focus:outline-none focus:ring-1 focus:ring-[#9b86d9] ${
+                isActiveRoute('/notifications') ? 'bg-[#f6f3fc] text-[#4b3679] border border-[#d6ccf4]' : ''
               }`}
               title="Notifications"
               aria-label="Notifications"
@@ -812,40 +843,40 @@ export const AppLayout: React.FC = () => {
             {/* User Avatar Chip */}
             <div
               onClick={() => navigate(user?.role === 'STUDENT' ? '/profile' : '/settings')}
-              className="flex items-center space-x-2.5 py-1 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 cursor-pointer transition shadow-2xs"
+              className="flex items-center space-x-2.5 py-1 px-2.5 rounded-sm bg-[#f4f5f8] hover:bg-[#ebedf2] border border-slate-300 cursor-pointer transition shadow-[1px_1px_0px_rgba(0,0,0,0.06)]"
             >
-              <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+              <div className="w-7 h-7 rounded-sm bg-[#9b86d9] text-[#07080b] flex items-center justify-center font-bold text-xs shadow-xs shrink-0 font-mono">
                 {user?.full_name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="hidden sm:block text-left">
-                <div className="text-xs text-slate-800 font-bold leading-tight truncate max-w-[120px]">
+                <div className="text-xs text-slate-900 font-bold leading-tight truncate max-w-[120px] font-sans">
                   {user?.full_name}
                 </div>
-                <div className="text-[10px] text-slate-500 font-medium">{user?.role}</div>
+                <div className="text-[10px] text-slate-500 font-mono tracking-wider">{user?.role}</div>
               </div>
             </div>
           </div>
         </header>
 
         {/* MAIN WORKSPACE CONTENT */}
-        <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8 relative z-10">
           <Outlet />
         </main>
 
         {/* WORKSPACE FOOTER */}
-        <footer className="bg-white border-t border-slate-200/80 py-4 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+        <footer className="bg-white border-t border-slate-300 py-3.5 mt-auto relative z-10 font-mono text-[11px]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-slate-500 gap-2">
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-slate-800">CampusFlow</span>
-              <span className="text-slate-300">&bull;</span>
-              <span>University Placement Platform</span>
+              <span className="font-bold text-slate-900 font-display">CampusFlow</span>
+              <span className="text-slate-300 select-none">//</span>
+              <span>KARE Institutional Placement Intelligence</span>
             </div>
             <div className="flex items-center space-x-4">
               <span className="inline-flex items-center space-x-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="font-medium text-slate-600">System Operational</span>
+                <span className="font-medium text-slate-700">SYS.OPERATIONAL</span>
               </span>
-              <span>v1.0.0</span>
+              <span className="text-slate-400">BUILD 2.4.0</span>
             </div>
           </div>
         </footer>

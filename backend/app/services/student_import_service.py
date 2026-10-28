@@ -25,9 +25,18 @@ from app.schemas.student_import import (
 )
 from app.utils.excel_importer import (
     detect_column_mappings,
+    normalize_backlogs,
+    normalize_batch_year,
+    normalize_branch_code,
     normalize_cell_as_string,
+    normalize_cgpa,
+    normalize_gender,
+    normalize_personal_email,
+    normalize_phone_number,
     parse_tabular_file,
 )
+
+CHUNK_SIZE = 500
 
 
 class StudentImportService:
@@ -73,16 +82,13 @@ class StudentImportService:
                 existing_in_db_count=0,
                 can_import=False,
                 preview_items=[],
+                valid_items=[],
             )
 
-        # Pre-fetch existing roll numbers and branches from DB
+        # Pre-fetch existing roll numbers from DB
         stmt_profiles = select(StudentProfile.roll_number, User.is_active).join(User, StudentProfile.user_id == User.id)
         db_profiles = (await self.session.execute(stmt_profiles)).all()
-        existing_db_map = {row[0].strip().lower(): row[1] for row in db_profiles}
-
-        stmt_branches = select(Branch.code)
-        db_branches = (await self.session.execute(stmt_branches)).scalars().all()
-        existing_branches = {b.strip().upper() for b in db_branches}
+        existing_db_map = {row[0].strip().lower(): bool(row[1]) for row in db_profiles if row[0]}
 
         seen_in_file: set[str] = set()
         preview_items: list[StudentMasterImportPreviewItem] = []
@@ -98,42 +104,17 @@ class StudentImportService:
             raw_reg = row.get(reg_col, "")
             clean_reg = normalize_cell_as_string(raw_reg).strip()
 
-            raw_name = normalize_cell_as_string(row.get(name_col, "")).strip() if name_col else None
-            raw_branch = normalize_cell_as_string(row.get(branch_col, "CSE")).strip().upper() if branch_col else "CSE"
-            if not raw_branch:
-                raw_branch = "CSE"
+            raw_name = normalize_cell_as_string(row.get(name_col, "")).strip()[:255] if name_col else None
+            if not raw_name:
+                raw_name = None
 
-            raw_batch_str = normalize_cell_as_string(row.get(batch_col, "2026")).strip() if batch_col else "2026"
-            try:
-                raw_batch = int(float(raw_batch_str)) if raw_batch_str else 2026
-            except ValueError:
-                raw_batch = 2026
-
-            raw_cgpa_str = normalize_cell_as_string(row.get(cgpa_col, "0.0")).strip() if cgpa_col else "0.0"
-            try:
-                raw_cgpa = float(raw_cgpa_str) if raw_cgpa_str else 0.0
-                if raw_cgpa > 10.0 and raw_cgpa <= 100.0:
-                    raw_cgpa = round(raw_cgpa / 10.0, 2)  # Convert percentage to 10-point scale
-                raw_cgpa = max(0.0, min(10.0, raw_cgpa))
-            except ValueError:
-                raw_cgpa = 0.0
-
-            raw_backlogs_str = normalize_cell_as_string(row.get(backlogs_col, "0")).strip() if backlogs_col else "0"
-            try:
-                raw_backlogs = int(float(raw_backlogs_str)) if raw_backlogs_str else 0
-            except ValueError:
-                raw_backlogs = 0
-
-            raw_email = normalize_cell_as_string(row.get(email_col, "")).strip() if email_col else None
-            raw_phone = normalize_cell_as_string(row.get(phone_col, "")).strip() if phone_col else None
-            raw_gender = normalize_cell_as_string(row.get(gender_col, "")).strip().upper() if gender_col else None
-            if raw_gender and raw_gender not in ["MALE", "FEMALE", "OTHER"]:
-                if raw_gender.startswith("M"):
-                    raw_gender = "MALE"
-                elif raw_gender.startswith("F"):
-                    raw_gender = "FEMALE"
-                else:
-                    raw_gender = "OTHER"
+            raw_branch = normalize_branch_code(row.get(branch_col)) if branch_col else "CSE"
+            raw_batch = normalize_batch_year(row.get(batch_col)) if batch_col else 2026
+            raw_cgpa = normalize_cgpa(row.get(cgpa_col)) if cgpa_col else 0.0
+            raw_backlogs = normalize_backlogs(row.get(backlogs_col)) if backlogs_col else 0
+            raw_email = normalize_personal_email(row.get(email_col)) if email_col else None
+            raw_phone = normalize_phone_number(row.get(phone_col)) if phone_col else None
+            raw_gender = normalize_gender(row.get(gender_col)) if gender_col else None
 
             # Validation logic
             status = "VALID"
@@ -210,16 +191,34 @@ class StudentImportService:
         current_user_id: UUID,
     ) -> StudentMasterImportConfirmResponse:
         """
-        Safely and idempotently creates or updates master student records in database.
-        Never creates duplicate User accounts.
+        Safely, idempotently, and rapidly creates or updates master student records in database.
+        Uses batch chunked lookups and single-pass placeholder password generation to process
+        thousands of records in milliseconds without duplicate user constraints or event-loop freezing.
         """
-        # 1. Pre-fetch existing branches and insert missing branches dynamically
+        # 1. Clean and deduplicate request items by roll_number (last entry wins)
+        valid_items_map: dict[str, StudentMasterImportItem] = {}
+        for item in request.items:
+            clean_reg = normalize_cell_as_string(item.roll_number).strip()
+            if clean_reg:
+                valid_items_map[clean_reg.lower()] = item
+
+        skipped_count = len(request.items) - len(valid_items_map)
+        if not valid_items_map:
+            return StudentMasterImportConfirmResponse(
+                total_processed=len(request.items),
+                created_count=0,
+                updated_count=0,
+                skipped_count=skipped_count,
+                message="No valid student rows to import.",
+            )
+
+        # 2. Pre-fetch existing branches and insert missing branches dynamically
         stmt_branches = select(Branch)
         branches = (await self.session.execute(stmt_branches)).scalars().all()
         branch_map = {b.code.upper(): b for b in branches}
 
-        for item in request.items:
-            clean_b = (item.branch_code or "CSE").strip().upper()
+        for item in valid_items_map.values():
+            clean_b = normalize_branch_code(item.branch_code)
             if clean_b and clean_b not in branch_map:
                 new_branch = Branch(code=clean_b, name=clean_b, is_active=True)
                 self.session.add(new_branch)
@@ -227,73 +226,116 @@ class StudentImportService:
 
         await self.session.flush()
 
-        created_count = 0
-        updated_count = 0
-        skipped_count = 0
+        # 3. Chunked lookups for existing StudentProfiles
+        reg_lowers = list(valid_items_map.keys())
+        profile_map: dict[str, StudentProfile] = {}
+        user_id_to_profile: dict[UUID, StudentProfile] = {}
 
-        # Process each valid student record
-        for item in request.items:
-            clean_reg = normalize_cell_as_string(item.roll_number).strip()
-            if not clean_reg:
-                skipped_count += 1
-                continue
-
-            clean_branch = (item.branch_code or "CSE").strip().upper()
-            if clean_branch not in branch_map:
-                clean_branch = "CSE"
-
-            # Check if StudentProfile already exists
-            stmt_profile = (
+        for i in range(0, len(reg_lowers), CHUNK_SIZE):
+            chunk = reg_lowers[i : i + CHUNK_SIZE]
+            stmt_profiles = (
                 select(StudentProfile)
                 .options(selectinload(StudentProfile.user))
-                .where(func.lower(StudentProfile.roll_number) == clean_reg.lower())
+                .where(func.lower(StudentProfile.roll_number).in_(chunk))
             )
-            existing_profile = (await self.session.execute(stmt_profile)).scalar_one_or_none()
+            for prof in (await self.session.execute(stmt_profiles)).scalars().all():
+                if prof.roll_number:
+                    profile_map[prof.roll_number.strip().lower()] = prof
+                    if prof.user_id:
+                        user_id_to_profile[prof.user_id] = prof
 
+        # 4. Chunked lookups for existing Users by university email
+        univ_emails = [f"{reg}@klu.ac.in".lower() for reg in reg_lowers]
+        user_by_email_map: dict[str, User] = {}
+
+        for i in range(0, len(univ_emails), CHUNK_SIZE):
+            chunk = univ_emails[i : i + CHUNK_SIZE]
+            stmt_users = select(User).where(func.lower(User.email).in_(chunk))
+            for u in (await self.session.execute(stmt_users)).scalars().all():
+                if u.email:
+                    user_by_email_map[u.email.strip().lower()] = u
+
+        # 5. Pre-compute placeholder hash once for unactivated student accounts
+        placeholder_hash = hash_password("campusflow_unactivated_placeholder")
+
+        created_count = 0
+        updated_count = 0
+
+        # 6. Fast in-memory resolution and staging
+        for reg_lower, item in valid_items_map.items():
+            clean_reg = normalize_cell_as_string(item.roll_number).strip()
+            clean_branch = normalize_branch_code(item.branch_code)
+            clean_batch = normalize_batch_year(item.batch_year)
+            clean_cgpa = normalize_cgpa(item.cgpa)
+            clean_backlogs = normalize_backlogs(item.active_backlogs)
+            clean_phone = normalize_phone_number(item.phone_number)
+            clean_email = normalize_personal_email(item.personal_email)
+            clean_gender = normalize_gender(item.gender)
+            clean_name = item.full_name.strip()[:255] if item.full_name and item.full_name.strip() else None
+
+            existing_profile = profile_map.get(reg_lower)
             if existing_profile:
                 # Update existing profile master data
                 existing_profile.branch_code = clean_branch
-                if item.batch_year:
-                    existing_profile.batch_year = item.batch_year
-                if item.cgpa is not None:
-                    existing_profile.cgpa = item.cgpa
-                if item.active_backlogs is not None:
-                    existing_profile.active_backlogs = item.active_backlogs
-                if item.phone_number:
-                    existing_profile.phone_number = item.phone_number
-                if item.gender:
-                    existing_profile.gender = item.gender
+                existing_profile.batch_year = clean_batch
+                existing_profile.cgpa = clean_cgpa
+                existing_profile.active_backlogs = clean_backlogs
+                if clean_phone:
+                    existing_profile.phone_number = clean_phone
+                if clean_email:
+                    existing_profile.personal_email = clean_email
+                if clean_gender:
+                    existing_profile.gender = clean_gender
 
-                # If student full_name is unassigned or placeholder, update user.full_name
-                if item.full_name and existing_profile.user:
+                # Update full_name on associated user if placeholder or missing
+                if clean_name and existing_profile.user:
                     if (
                         not existing_profile.user.full_name
                         or existing_profile.user.full_name.lower().startswith("student")
                         or not existing_profile.user.is_active
                     ):
-                        existing_profile.user.full_name = item.full_name
+                        existing_profile.user.full_name = clean_name
 
                 updated_count += 1
             else:
-                # Check if User already exists with university email
-                univ_email = f"{clean_reg}@klu.ac.in"
-                stmt_user = select(User).where(func.lower(User.email) == univ_email.lower())
-                existing_user = (await self.session.execute(stmt_user)).scalar_one_or_none()
+                univ_email = f"{clean_reg.lower()}@klu.ac.in"
+                email_lower = univ_email.lower()
+                user = user_by_email_map.get(email_lower)
 
-                if not existing_user:
+                if user:
+                    # User exists in DB
+                    linked_profile = user_id_to_profile.get(user.id)
+                    if linked_profile:
+                        # Existing profile attached to this user; update roll_number & fields
+                        linked_profile.roll_number = clean_reg
+                        linked_profile.branch_code = clean_branch
+                        linked_profile.batch_year = clean_batch
+                        linked_profile.cgpa = clean_cgpa
+                        linked_profile.active_backlogs = clean_backlogs
+                        if clean_phone:
+                            linked_profile.phone_number = clean_phone
+                        if clean_email:
+                            linked_profile.personal_email = clean_email
+                        if clean_gender:
+                            linked_profile.gender = clean_gender
+                        if clean_name and (not user.full_name or user.full_name.lower().startswith("student")):
+                            user.full_name = clean_name
+                        profile_map[reg_lower] = linked_profile
+                        updated_count += 1
+                        continue
+
+                else:
                     # Create inactive User record for pre-provisioned student
                     user = User(
                         id=uuid4(),
                         email=univ_email,
-                        password_hash=hash_password(str(uuid4())),  # Random hashed placeholder until student self-registers
+                        password_hash=placeholder_hash,
                         role="STUDENT",
-                        full_name=item.full_name or f"Student {clean_reg}",
+                        full_name=clean_name or f"Student {clean_reg}",
                         is_active=False,
                     )
                     self.session.add(user)
-                    await self.session.flush()
-                else:
-                    user = existing_user
+                    user_by_email_map[email_lower] = user
 
                 # Create new StudentProfile
                 new_profile = StudentProfile(
@@ -301,18 +343,21 @@ class StudentImportService:
                     user_id=user.id,
                     roll_number=clean_reg,
                     branch_code=clean_branch,
-                    batch_year=item.batch_year or 2026,
-                    cgpa=item.cgpa if item.cgpa is not None else 0.0,
-                    active_backlogs=item.active_backlogs if item.active_backlogs is not None else 0,
-                    phone_number=item.phone_number,
-                    personal_email=item.personal_email,
-                    gender=item.gender,
+                    batch_year=clean_batch,
+                    cgpa=clean_cgpa,
+                    active_backlogs=clean_backlogs,
+                    phone_number=clean_phone,
+                    personal_email=clean_email,
+                    gender=clean_gender,
                 )
                 self.session.add(new_profile)
+                profile_map[reg_lower] = new_profile
+                user_id_to_profile[user.id] = new_profile
                 created_count += 1
 
-        # Audit log entry
+        # 7. Audit log entry
         audit_log = AuditLog(
+            id=uuid4(),
             performed_by_user_id=current_user_id,
             action="STUDENT_MASTER_IMPORT_CONFIRMED",
             entity_type="StudentProfile",
@@ -321,7 +366,7 @@ class StudentImportService:
                 "created_count": created_count,
                 "updated_count": updated_count,
                 "skipped_count": skipped_count,
-                "total_processed": len(request.items),
+                "total_processed": len(valid_items_map),
             },
         )
         self.session.add(audit_log)
@@ -329,9 +374,9 @@ class StudentImportService:
         await self.session.commit()
 
         return StudentMasterImportConfirmResponse(
-            total_processed=len(request.items),
+            total_processed=len(valid_items_map),
             created_count=created_count,
             updated_count=updated_count,
             skipped_count=skipped_count,
-            message=f"Successfully processed {len(request.items)} students: {created_count} created, {updated_count} updated.",
+            message=f"Successfully processed {len(valid_items_map)} students: {created_count} created, {updated_count} updated.",
         )

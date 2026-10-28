@@ -107,7 +107,7 @@ class PlacementStageService:
                 s.student_count = count_map.get(s.id, 0)
             return stages
 
-        # Student visibility & progress mapping
+        # Student visibility & progress mapping: return all configured drive stages with individual status
         stmt_student_assign = (
             select(StageAssignment)
             .where(
@@ -125,7 +125,9 @@ class PlacementStageService:
             assign = student_map.get(stage.id)
             if assign:
                 stage.my_status = assign.status
-                visible_stages.append(stage)
+            else:
+                stage.my_status = None
+            visible_stages.append(stage)
 
         return visible_stages
 

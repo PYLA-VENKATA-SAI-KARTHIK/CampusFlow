@@ -10,7 +10,16 @@ import { EmptyState, Skeleton, StatCard } from '../components/ui/StatusFeedback'
    Types
 ───────────────────────────────────────────────────────────────────────────── */
 
-interface ApplicationItem {
+export interface ApplicationStage {
+  id: string;
+  name: string;
+  stage_type: string;
+  sequence_order: number;
+  scheduled_at?: string | null;
+  my_status?: string | null;
+}
+
+export interface ApplicationItem {
   id: string;
   drive_id: string;
   student_id: string;
@@ -19,23 +28,16 @@ interface ApplicationItem {
   drive_title?: string;
   company_name?: string;
   role_title?: string;
+  stages: ApplicationStage[];
   current_stage_name?: string | null;
   current_stage_sequence?: number | null;
+  current_stage_status?: string | null;
   is_shortlisted?: boolean;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Constants
 ───────────────────────────────────────────────────────────────────────────── */
-
-const DEFAULT_STAGES = [
-  'Applied',
-  'Shortlisted',
-  'Online Assessment',
-  'Technical Interview',
-  'HR Interview',
-  'Final Offer',
-];
 
 const FILTER_TABS = ['ALL', 'APPLIED', 'SHORTLISTED', 'SELECTED', 'REJECTED'] as const;
 type FilterTab = typeof FILTER_TABS[number];
@@ -44,22 +46,6 @@ type FilterTab = typeof FILTER_TABS[number];
    Helpers
 ───────────────────────────────────────────────────────────────────────────── */
 
-const getActiveStageIndex = (app: ApplicationItem): number => {
-  if (app.status === 'SELECTED') return DEFAULT_STAGES.length - 1;
-  if (app.status === 'REJECTED') {
-    if (app.is_shortlisted) return 1;
-    return 0;
-  }
-  if (app.current_stage_name) {
-    const matchIdx = DEFAULT_STAGES.findIndex(
-      (s) => s.toLowerCase() === app.current_stage_name?.toLowerCase()
-    );
-    if (matchIdx !== -1) return matchIdx;
-  }
-  if (app.is_shortlisted || app.status === 'SHORTLISTED') return 1;
-  return 0;
-};
-
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -67,19 +53,88 @@ const getCompanyInitial = (app: ApplicationItem): string =>
   ((app.company_name || app.drive_title || 'C').charAt(0) || 'C').toUpperCase();
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Journey Stage Stepper — horizontal rail with progress fill
+   Journey Stage Stepper — dynamically adapts to drive's configured rounds
 ───────────────────────────────────────────────────────────────────────────── */
 
 interface StageStepperProps {
   app: ApplicationItem;
-  activeIndex: number;
-  isRejected: boolean;
-  isSelected: boolean;
 }
 
-const StageStepper: React.FC<StageStepperProps> = ({ activeIndex, isRejected, isSelected }) => {
-  const progressPct = DEFAULT_STAGES.length > 1
-    ? (activeIndex / (DEFAULT_STAGES.length - 1)) * 88
+const StageStepper: React.FC<StageStepperProps> = ({ app }) => {
+  const driveStages = app.stages && app.stages.length > 0 ? app.stages : [];
+
+  // Construct dynamic stepper items: Step 0 (Applied) + Configured Rounds + Final Offer (if Selected)
+  const steps: {
+    label: string;
+    sublabel?: string;
+    status: 'COMPLETED' | 'CURRENT' | 'REJECTED' | 'UPCOMING';
+  }[] = [
+    { label: 'Applied', sublabel: 'Submitted', status: 'COMPLETED' },
+  ];
+
+  if (driveStages.length > 0) {
+    let foundCurrent = false;
+    driveStages.forEach((s, idx) => {
+      let stepStatus: 'COMPLETED' | 'CURRENT' | 'REJECTED' | 'UPCOMING' = 'UPCOMING';
+      const isQualified = s.my_status === 'SHORTLISTED' || s.my_status === 'SELECTED' || s.my_status === 'APPEARED';
+      const isRejected = s.my_status === 'REJECTED';
+
+      if (isQualified) {
+        stepStatus = 'COMPLETED';
+      } else if (isRejected) {
+        stepStatus = 'REJECTED';
+      } else {
+        const prevCompleted = idx === 0 ? true : (
+          driveStages[idx - 1].my_status === 'SHORTLISTED' ||
+          driveStages[idx - 1].my_status === 'SELECTED' ||
+          driveStages[idx - 1].my_status === 'APPEARED'
+        );
+        const anyPrevRejected = driveStages.slice(0, idx).some(st => st.my_status === 'REJECTED') || app.status === 'REJECTED';
+
+        if (prevCompleted && !anyPrevRejected && !foundCurrent) {
+          stepStatus = 'CURRENT';
+          foundCurrent = true;
+        } else {
+          stepStatus = 'UPCOMING';
+        }
+      }
+
+      steps.push({
+        label: s.name,
+        sublabel: s.stage_type,
+        status: stepStatus,
+      });
+    });
+  } else {
+    // Fallback if drive has no explicit rounds configured yet
+    steps.push({
+      label: 'Rounds Pending',
+      sublabel: 'Upcoming',
+      status: app.status === 'SELECTED' ? 'COMPLETED' : app.status === 'REJECTED' ? 'REJECTED' : 'CURRENT',
+    });
+  }
+
+  if (app.status === 'SELECTED') {
+    steps.push({ label: 'Final Offer', sublabel: 'Selected', status: 'COMPLETED' });
+  }
+
+  // Determine progress percentage
+  let activeIndex = 0;
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i].status === 'CURRENT' || steps[i].status === 'REJECTED') {
+      activeIndex = i;
+      break;
+    }
+    if (steps[i].status === 'COMPLETED') {
+      activeIndex = i;
+    }
+  }
+
+  const isRejected = app.status === 'REJECTED' || steps.some((s) => s.status === 'REJECTED');
+  const isSelected = app.status === 'SELECTED';
+
+  const progressPct = steps.length > 1
+    ? (activeIndex / (steps.length - 1)) * 92
     : 0;
 
   return (
@@ -97,16 +152,16 @@ const StageStepper: React.FC<StageStepperProps> = ({ activeIndex, isRejected, is
 
       {/* Steps */}
       <ol className="relative z-10 flex items-start justify-between gap-1">
-        {DEFAULT_STAGES.map((stageName, idx) => {
-          const isCompleted = isSelected ? idx <= activeIndex : !isRejected && idx < activeIndex;
-          const isCurrent = idx === activeIndex && !isSelected;
-          const isRejectedStage = isRejected && idx === activeIndex;
+        {steps.map((step, idx) => {
+          const isCompleted = step.status === 'COMPLETED';
+          const isCurrent = step.status === 'CURRENT';
+          const isRejectedStage = step.status === 'REJECTED';
 
           let nodeColor: string;
           let labelColor: string;
 
           if (isRejectedStage) {
-            nodeColor = 'bg-rose-100 border-rose-300 text-rose-600';
+            nodeColor = 'bg-rose-100 border-rose-300 text-rose-600 ring-2 ring-rose-100';
             labelColor = 'text-rose-600 font-semibold';
           } else if (isCompleted) {
             nodeColor = 'bg-emerald-500 border-emerald-500 text-white';
@@ -120,12 +175,12 @@ const StageStepper: React.FC<StageStepperProps> = ({ activeIndex, isRejected, is
           }
 
           return (
-            <li key={stageName} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
+            <li key={idx} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
               <div
                 className={`w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${nodeColor}`}
                 aria-current={isCurrent ? 'step' : undefined}
               >
-                {isCompleted && !isRejectedStage ? (
+                {isCompleted ? (
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
@@ -137,8 +192,8 @@ const StageStepper: React.FC<StageStepperProps> = ({ activeIndex, isRejected, is
                   <span className="text-[10px] font-bold">{idx + 1}</span>
                 )}
               </div>
-              <span className={`text-[10px] text-center leading-tight px-0.5 truncate w-full ${labelColor}`}>
-                {stageName}
+              <span className={`text-[10px] text-center leading-tight px-0.5 truncate w-full ${labelColor}`} title={step.label}>
+                {step.label}
               </span>
             </li>
           );
@@ -158,17 +213,22 @@ interface ApplicationCardProps {
 }
 
 const ApplicationCard: React.FC<ApplicationCardProps> = ({ app, onNavigate }) => {
-  const activeIndex = getActiveStageIndex(app);
   const isRejected = app.status === 'REJECTED';
   const isSelected = app.status === 'SELECTED';
 
-  const currentStageName =
-    app.current_stage_name ||
-    (isSelected
-      ? 'Final Offer'
-      : isRejected
-      ? `Eliminated at ${DEFAULT_STAGES[activeIndex] ?? 'Stage'}`
-      : DEFAULT_STAGES[activeIndex] ?? 'Under Review');
+  let currentStageDisplay = 'Application Submitted';
+  if (isSelected) {
+    currentStageDisplay = 'Final Offer / Selected 🎉';
+  } else if (isRejected) {
+    currentStageDisplay = app.current_stage_name ? `Eliminated at ${app.current_stage_name}` : 'Not Shortlisted';
+  } else if (app.current_stage_name) {
+    const statusSuffix = app.current_stage_status && app.current_stage_status !== 'PENDING'
+      ? ` • ${app.current_stage_status}`
+      : '';
+    currentStageDisplay = `${app.current_stage_name}${statusSuffix}`;
+  } else if (app.stages && app.stages.length > 0) {
+    currentStageDisplay = `${app.stages[0].name} (Upcoming)`;
+  }
 
   const borderAccent = isSelected
     ? 'border-l-4 border-l-emerald-400'
@@ -193,7 +253,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({ app, onNavigate }) =>
             {getCompanyInitial(app)}
           </div>
           <div className="min-w-0">
-            <CardTitle className="text-sm">
+            <CardTitle className="text-sm hover:text-indigo-600 cursor-pointer" onClick={() => onNavigate(`/drives/${app.drive_id}`)}>
               {app.company_name || app.drive_title || 'Placement Drive'}
             </CardTitle>
             <CardDescription className="truncate">
@@ -208,16 +268,13 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({ app, onNavigate }) =>
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
             Recruitment Funnel
           </span>
-          <span className="text-[10px] text-slate-400">
-            Stage {activeIndex + 1} of {DEFAULT_STAGES.length}
+          <span className="text-[10px] text-slate-500 font-medium">
+            {app.stages && app.stages.length > 0
+              ? `${app.stages.length} Configured ${app.stages.length === 1 ? 'Round' : 'Rounds'}`
+              : 'Institutional Application'}
           </span>
         </div>
-        <StageStepper
-          app={app}
-          activeIndex={activeIndex}
-          isRejected={isRejected}
-          isSelected={isSelected}
-        />
+        <StageStepper app={app} />
       </CardContent>
 
       <div className="px-5 py-3 bg-slate-50/60 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -232,7 +289,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({ app, onNavigate }) =>
             Current Round:
           </span>
           <span className="text-[11px] font-semibold text-slate-800 truncate">
-            {currentStageName}
+            {currentStageDisplay}
           </span>
         </div>
 
@@ -241,11 +298,11 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({ app, onNavigate }) =>
             Applied {formatDate(app.created_at)}
           </span>
           <button
-            onClick={() => onNavigate('/notifications')}
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
-            aria-label="Check round notifications"
+            onClick={() => onNavigate(`/drives/${app.drive_id}`)}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+            aria-label="View drive details and selection progression"
           >
-            Check Round Notifications
+            <span>Drive Details & Progression</span>
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
@@ -407,19 +464,21 @@ export const MyApplicationsPage: React.FC = () => {
           id: raw.id || raw.registration_id || String(Math.random()),
           drive_id: raw.drive_id,
           student_id: raw.student_id || '',
-          status: raw.my_current_stage?.stage_status || raw.status || raw.drive_status || 'APPLIED',
+          status: raw.status || raw.my_current_stage?.stage_status || raw.drive_status || 'APPLIED',
           created_at: raw.registered_at || raw.created_at || new Date().toISOString(),
           drive_title: raw.drive_title || raw.title || '',
           company_name: raw.company_name || raw.company?.name || '',
           role_title: raw.role_title || raw.job_role || '',
+          stages: raw.stages || [],
           current_stage_name: raw.my_current_stage?.stage_name || raw.current_stage_name || null,
           current_stage_sequence: raw.my_current_stage?.stage_sequence ?? raw.current_stage_sequence ?? null,
+          current_stage_status: raw.my_current_stage?.stage_status || null,
           is_shortlisted: Boolean(
             raw.is_shortlisted ??
-            (raw.my_current_stage?.stage_status === 'SHORTLISTED' ||
-             raw.my_current_stage?.stage_status === 'SELECTED' ||
-             raw.status === 'SHORTLISTED' ||
-             raw.status === 'SELECTED')
+            (raw.status === 'SHORTLISTED' ||
+             raw.status === 'SELECTED' ||
+             raw.my_current_stage?.stage_status === 'SHORTLISTED' ||
+             raw.my_current_stage?.stage_status === 'SELECTED')
           ),
         }));
         setApplications(normalized);

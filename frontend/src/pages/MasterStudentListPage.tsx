@@ -8,7 +8,7 @@ export const MasterStudentListPage: React.FC = () => {
   const [students, setStudents] = useState<MasterStudentProfile[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [batchFilter, setBatchFilter] = useState<number | undefined>(undefined);
@@ -137,7 +137,7 @@ export const MasterStudentListPage: React.FC = () => {
           </svg>
         </div>
 
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <select
             value={branchFilter}
             onChange={(e) => {
@@ -153,6 +153,11 @@ export const MasterStudentListPage: React.FC = () => {
             <option value="MECH">MECH</option>
             <option value="CIVIL">CIVIL</option>
             <option value="EEE">EEE</option>
+            <option value="AI&DS">AI&DS</option>
+            <option value="AI&ML">AI&ML</option>
+            <option value="CSIT">CSIT</option>
+            <option value="ECM">ECM</option>
+            <option value="BIOTECH">BIOTECH</option>
           </select>
 
           <select
@@ -164,10 +169,34 @@ export const MasterStudentListPage: React.FC = () => {
             className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-indigo-500"
           >
             <option value="">All Batches</option>
+            <option value="2027">2027</option>
             <option value="2026">2026</option>
             <option value="2025">2025</option>
             <option value="2024">2024</option>
           </select>
+
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value={20}>20 / page</option>
+            <option value={50}>50 / page</option>
+            <option value={100}>100 / page</option>
+          </select>
+
+          <button
+            onClick={() => fetchStudents()}
+            title="Refresh student roster"
+            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
         </div>
       </div>
 

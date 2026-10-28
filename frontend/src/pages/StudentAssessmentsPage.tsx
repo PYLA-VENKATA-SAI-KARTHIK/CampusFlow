@@ -364,6 +364,56 @@ export const StudentAssessmentsPage: React.FC = () => {
         )
       )}
 
+      {/* ── AI Mock Interview & Feature Development Banner ──────────────────── */}
+      <div className="pt-6 border-t border-slate-200">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-indigo-900/40">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-2.5 max-w-2xl">
+              <div className="flex items-center space-x-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/30 text-indigo-300 border border-indigo-400/30">
+                  New Feature Labs • 2027 Cohort
+                </span>
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Simulator Ready
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-white">
+                Next Stage: AI Mock Interview Simulator & Skill Coaching
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Take your recruitment prep beyond MCQs. Practice real-time Data Structures, System Design, and STAR Behavioral questions with instant AI scoring and speaking pace analysis.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-slate-300">
+                <span className="px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/10">💻 Technical & DSA</span>
+                <span className="px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/10">🤝 HR & STAR Behavioral</span>
+                <span className="px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/10">🏗️ System Design</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0">
+              <Button
+                variant="primary"
+                size="md"
+                className="bg-indigo-500 hover:bg-indigo-600 text-white font-extrabold shadow-lg shadow-indigo-500/25 cursor-pointer"
+                onClick={() => navigate('/mock-interviews')}
+              >
+                Launch Mock Interviews Hub →
+              </Button>
+              <Button
+                variant="outline"
+                size="md"
+                className="border-white/20 text-white hover:bg-white/10 cursor-pointer"
+                onClick={() => navigate('/mock-interviews')}
+              >
+                Feature Updates & Roadmap 🚀
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* PRE-TEST PREVIEW MODAL */}
       {previewData && (
         <Modal

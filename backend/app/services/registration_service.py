@@ -6,13 +6,19 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
 from app.models.audit_log import AuditLog
 from app.models.drive_registration import DriveRegistration
+from app.models.placement_stage import PlacementStage
+from app.models.stage_assignment import StageAssignment
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.drive_registration_repository import DriveRegistrationRepository
 from app.repositories.placement_drive_repository import PlacementDriveRepository
 from app.repositories.student_profile_repository import StudentProfileRepository
 from app.schemas.drive_registration import (
+    ApplicationStageItem,
     CurrentStageSummary,
     DriveRegistrationResponse,
     DriveRegistrationWithStudentResponse,
@@ -216,29 +222,108 @@ class RegistrationService:
         rows, total = await self.registration_repo.list_student_applications(student_user_id, skip, limit, status)
         
         drive_ids = [drive.id for _, drive, _ in rows]
-        assignments = await self.assignment_repo.get_student_assignments_for_drives(student_user_id, drive_ids)
-        assignment_map = {a.drive_id: a for a in assignments}
+        if not drive_ids:
+            return [], total
+
+        # Fetch all stages for these drives ordered by sequence_order
+        stmt_stages = (
+            select(PlacementStage)
+            .where(PlacementStage.drive_id.in_(drive_ids))
+            .order_by(PlacementStage.drive_id, PlacementStage.sequence_order)
+        )
+        all_stages = (await self.registration_repo.session.execute(stmt_stages)).scalars().all()
+        drive_stages_map: dict[UUID, list[PlacementStage]] = {}
+        for s in all_stages:
+            if s.drive_id not in drive_stages_map:
+                drive_stages_map[s.drive_id] = []
+            drive_stages_map[s.drive_id].append(s)
+
+        # Fetch all student assignments for these drives
+        stmt_assignments = (
+            select(StageAssignment)
+            .options(selectinload(StageAssignment.stage))
+            .where(
+                StageAssignment.student_user_id == student_user_id,
+                StageAssignment.drive_id.in_(drive_ids),
+            )
+        )
+        assignments = (await self.registration_repo.session.execute(stmt_assignments)).scalars().all()
+        student_stage_assignment_map = {a.stage_id: a for a in assignments}
         
         result = []
         for reg, drive, company in rows:
-            assignment = assignment_map.get(drive.id)
-            current_stage = None
-            if assignment:
-                current_stage = CurrentStageSummary(
-                    stage_name=assignment.stage.name,
-                    stage_status=assignment.status,
-                    scheduled_at=assignment.stage.scheduled_at
+            drive_stages = drive_stages_map.get(drive.id, [])
+            stages_items: list[ApplicationStageItem] = []
+            
+            latest_assignment = None
+            has_rejected = False
+            has_selected = False
+            has_shortlisted = False
+
+            for s in drive_stages:
+                assign = student_stage_assignment_map.get(s.id)
+                st_status = assign.status if assign else None
+                if st_status == "REJECTED":
+                    has_rejected = True
+                elif st_status == "SELECTED":
+                    has_selected = True
+                elif st_status in ("SHORTLISTED", "APPEARED"):
+                    has_shortlisted = True
+
+                if assign:
+                    latest_assignment = assign
+
+                stages_items.append(
+                    ApplicationStageItem(
+                        id=s.id,
+                        name=s.name,
+                        stage_type=s.stage_type,
+                        sequence_order=s.sequence_order,
+                        scheduled_at=s.scheduled_at,
+                        my_status=st_status,
+                    )
                 )
-                
+
+            current_stage = None
+            if latest_assignment and latest_assignment.stage:
+                current_stage = CurrentStageSummary(
+                    stage_name=latest_assignment.stage.name,
+                    stage_status=latest_assignment.status,
+                    stage_sequence=latest_assignment.stage.sequence_order,
+                    scheduled_at=latest_assignment.stage.scheduled_at,
+                )
+            elif drive_stages:
+                # If no assignment yet, active upcoming round is Round 1
+                current_stage = CurrentStageSummary(
+                    stage_name=drive_stages[0].name,
+                    stage_status="PENDING",
+                    stage_sequence=drive_stages[0].sequence_order,
+                    scheduled_at=drive_stages[0].scheduled_at,
+                )
+
+            # Derive overall application status
+            overall_status = "APPLIED"
+            if has_selected:
+                overall_status = "SELECTED"
+            elif has_rejected:
+                overall_status = "REJECTED"
+            elif has_shortlisted:
+                overall_status = "SHORTLISTED"
+            elif reg.status:
+                overall_status = reg.status
+
             response = StudentApplicationResponse(
                 registration_id=reg.id,
                 drive_id=drive.id,
                 drive_title=drive.title,
+                role_title=getattr(drive, "job_role", None) or getattr(drive, "role_title", None),
                 company_name=company.name,
                 company_logo_url=company.logo_gcs_path,
                 registered_at=reg.registered_at,
                 drive_status=drive.status,
-                my_current_stage=current_stage
+                status=overall_status,
+                stages=stages_items,
+                my_current_stage=current_stage,
             )
             result.append(response)
             

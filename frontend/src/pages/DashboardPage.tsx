@@ -161,18 +161,41 @@ export const DashboardPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. HERO COMMAND BANNER                                                    */}
       {/* ========================================================================= */}
-      <div className="relative overflow-hidden bg-slate-900 rounded-2xl border border-slate-800 p-6 sm:p-8 text-white shadow-md">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+      {/* ========================================================================= */}
+      {/* 1. HERO COMMAND BANNER (REFERRAL EDITORIAL DESIGN)                         */}
+      {/* ========================================================================= */}
+      <div className="relative overflow-hidden bg-[#0c0d12] rounded-md border border-[#1a1b24] p-6 sm:p-8 text-white shadow-[4px_4px_0px_#9b86d9]">
+        {/* Subtle dot matrix pattern */}
+        <div className="absolute inset-0 bg-dot-matrix-white opacity-20 pointer-events-none" />
+
+        {/* Top Technical Metadata */}
+        <div className="relative z-10 flex items-center justify-between font-mono text-[11px] text-[#9b86d9] mb-3 select-none tracking-wider">
+          <div className="flex items-center space-x-2">
+            <span className="font-bold">[SEC.01]</span>
+            <span className="text-slate-500">//</span>
+            <span>OVERVIEW.SYS</span>
+          </div>
+          <div className="text-slate-400 font-mono text-[10px] tracking-widest uppercase">
+            X:0142 Y:0096
+          </div>
+        </div>
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-800 text-indigo-300 text-xs font-semibold border border-slate-700/60">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>CampusFlow Active Workspace</span>
+            <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-sm bg-[#181924] text-[#9b86d9] text-[11px] font-mono font-bold border border-[#2b2d3e]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+              <span>CAMPUSFLOW WORKSPACE ACTIVE</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              {isStudent ? `Welcome back, ${user?.full_name || 'Synthetic Student One'}` : 'Welcome to CampusFlow'}
-            </h1>
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <div className="flex items-baseline space-x-3">
+              <span className="font-display font-black text-3xl sm:text-4xl text-[#9b86d9] select-none">01</span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display">
+                {isStudent ? `Welcome back, ${user?.full_name || 'Synthetic Student One'}` : 'Welcome to CampusFlow'}
+              </h1>
+            </div>
+            <div className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              CAMPUSFLOW VERIFICATION & PERFORMANCE READOUT
+            </div>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-1">
               {isStudent
                 ? 'Welcome to CampusFlow — You are successfully logged in. Stay on top of your placement opportunities.'
                 : 'Welcome to CampusFlow — You are successfully logged in. Placement Operations & Candidate Management.'}
@@ -182,9 +205,8 @@ export const DashboardPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             {isOfficerOrAdmin ? (
               <Button
-                variant="primary"
+                variant="lilac"
                 onClick={() => navigate('/analytics')}
-                className="shadow-sm shadow-indigo-600/20"
               >
                 <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -194,9 +216,8 @@ export const DashboardPage: React.FC = () => {
             ) : (
               <>
                 <Button
-                  variant="primary"
+                  variant="lilac"
                   onClick={() => navigate('/drives')}
-                  className="shadow-sm shadow-indigo-600/20"
                 >
                   <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -206,7 +227,7 @@ export const DashboardPage: React.FC = () => {
                 <Button
                   variant="secondary"
                   onClick={() => navigate('/preparation')}
-                  className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white"
+                  className="bg-[#181924] border-[#2b2d3e] text-slate-200 hover:bg-[#232535] hover:text-white"
                 >
                   <span>Preparation Hub</span>
                 </Button>
@@ -223,89 +244,89 @@ export const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div
             onClick={() => navigate('/drives')}
-            className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="p-5 rounded-sm bg-white border border-slate-300 shadow-[2px_2px_0px_rgba(10,11,16,0.06)] hover:border-[#9b86d9] hover:shadow-[3px_3px_0px_#9b86d9] transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
                 Eligible Drives
               </span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition">
+              <div className="w-8 h-8 rounded-sm bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0] flex items-center justify-center group-hover:scale-105 transition">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <div className="text-2xl sm:text-3xl font-black text-slate-950 font-display tracking-tight">
                 {loading ? <Skeleton className="h-8 w-16" /> : drives.length}
               </div>
-              <div className="mt-1 text-[11px] font-medium text-slate-400">Open matching opportunities</div>
+              <div className="mt-1 text-[11px] font-mono text-slate-400">Open matching opportunities</div>
             </div>
           </div>
 
           <div
             onClick={() => navigate('/applications')}
-            className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="p-5 rounded-sm bg-white border border-slate-300 shadow-[2px_2px_0px_rgba(10,11,16,0.06)] hover:border-[#9b86d9] hover:shadow-[3px_3px_0px_#9b86d9] transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
                 Applications
               </span>
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition">
+              <div className="w-8 h-8 rounded-sm bg-[#f6f3fc] text-[#4b3679] border border-[#c1aeee] flex items-center justify-center group-hover:scale-105 transition">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <div className="text-2xl sm:text-3xl font-black text-slate-950 font-display tracking-tight">
                 {loading ? <Skeleton className="h-8 w-16" /> : applications.length}
               </div>
-              <div className="mt-1 text-[11px] font-medium text-slate-400">Submitted & in review</div>
+              <div className="mt-1 text-[11px] font-mono text-slate-400">Submitted & in review</div>
             </div>
           </div>
 
           <div
             onClick={() => navigate('/applications')}
-            className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="p-5 rounded-sm bg-white border border-slate-300 shadow-[2px_2px_0px_rgba(10,11,16,0.06)] hover:border-[#9b86d9] hover:shadow-[3px_3px_0px_#9b86d9] transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
                 Shortlisted
               </span>
-              <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition">
+              <div className="w-8 h-8 rounded-sm bg-[#9b86d9] text-[#07080b] border border-[#07080b] flex items-center justify-center group-hover:scale-105 transition shadow-[1px_1px_0px_#07080b]">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl sm:text-3xl font-black text-indigo-700 tracking-tight">
+              <div className="text-2xl sm:text-3xl font-black text-[#5a4195] font-display tracking-tight">
                 {loading ? <Skeleton className="h-8 w-16" /> : shortlistedCount}
               </div>
-              <div className="mt-1 text-[11px] font-medium text-slate-400">Advanced interview rounds</div>
+              <div className="mt-1 text-[11px] font-mono text-slate-400">Advanced interview rounds</div>
             </div>
           </div>
 
           <div
             onClick={() => navigate('/drives')}
-            className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="p-5 rounded-sm bg-white border border-slate-300 shadow-[2px_2px_0px_rgba(10,11,16,0.06)] hover:border-[#9b86d9] hover:shadow-[3px_3px_0px_#9b86d9] transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
                 Upcoming Deadlines
               </span>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition">
+              <div className="w-8 h-8 rounded-sm bg-[#fffbeb] text-[#92400e] border border-[#fde68a] flex items-center justify-center group-hover:scale-105 transition">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight">
+              <div className="text-2xl sm:text-3xl font-black text-amber-600 font-display tracking-tight">
                 {loading ? <Skeleton className="h-8 w-16" /> : upcomingDeadlinesCount}
               </div>
-              <div className="mt-1 text-[11px] font-medium text-slate-400">Closing within 7 days</div>
+              <div className="mt-1 text-[11px] font-mono text-slate-400">Closing within 7 days</div>
             </div>
           </div>
         </div>

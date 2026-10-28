@@ -91,7 +91,15 @@ async def confirm_student_import(
             detail="No student items provided to import.",
         )
 
-    return await service.confirm_student_import(
-        request=request,
-        current_user_id=current_user.user_id,
-    )
+    try:
+        return await service.confirm_student_import(
+            request=request,
+            current_user_id=current_user.user_id,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to import students: {str(e)}",
+        )

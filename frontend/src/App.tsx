@@ -65,6 +65,9 @@ const AssessmentResultPage = lazy(() =>
 const MasterStudentListPage = lazy(() =>
   import('./pages/MasterStudentListPage').then((m) => ({ default: m.MasterStudentListPage }))
 );
+const MockInterviewsPage = lazy(() =>
+  import('./pages/MockInterviewsPage').then((m) => ({ default: m.MockInterviewsPage }))
+);
 
 function App() {
   return (
@@ -99,6 +102,7 @@ function App() {
                 <Route path="/applications" element={<MyApplicationsPage />} />
                 <Route path="/preparation" element={<PreparationHubPage />} />
                 <Route path="/assessments" element={<AssessmentsPage />} />
+                <Route path="/mock-interviews" element={<MockInterviewsPage />} />
                 <Route path="/assessments/results/:attemptId" element={<AssessmentResultPage />} />
                 <Route path="/profile" element={<MyProfilePage />} />
                 <Route path="/resume" element={<MyProfilePage />} />

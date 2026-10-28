@@ -130,6 +130,175 @@ COLUMN_ALIASES: dict[str, list[str]] = {
 }
 
 
+BRANCH_SYNONYMS: dict[str, str] = {
+    "COMPUTER SCIENCE": "CSE",
+    "COMPUTER SCIENCE AND ENGINEERING": "CSE",
+    "COMPUTER SCIENCE & ENGINEERING": "CSE",
+    "COMP SCI": "CSE",
+    "CS": "CSE",
+    "ELECTRONICS AND COMMUNICATION": "ECE",
+    "ELECTRONICS & COMMUNICATION": "ECE",
+    "ELECTRONICS AND COMMUNICATION ENGINEERING": "ECE",
+    "ELECTRONICS & COMMUNICATION ENGINEERING": "ECE",
+    "EC": "ECE",
+    "INFORMATION TECHNOLOGY": "IT",
+    "INFO TECH": "IT",
+    "MECHANICAL": "MECH",
+    "MECHANICAL ENGINEERING": "MECH",
+    "ME": "MECH",
+    "CIVIL": "CIVIL",
+    "CIVIL ENGINEERING": "CIVIL",
+    "CE": "CIVIL",
+    "ELECTRICAL AND ELECTRONICS": "EEE",
+    "ELECTRICAL & ELECTRONICS": "EEE",
+    "ELECTRICAL AND ELECTRONICS ENGINEERING": "EEE",
+    "ELECTRICAL & ELECTRONICS ENGINEERING": "EEE",
+    "EE": "EEE",
+    "ARTIFICIAL INTELLIGENCE AND DATA SCIENCE": "AI&DS",
+    "ARTIFICIAL INTELLIGENCE & DATA SCIENCE": "AI&DS",
+    "AI AND DS": "AI&DS",
+    "AI & DS": "AI&DS",
+    "AIDS": "AI&DS",
+    "ARTIFICIAL INTELLIGENCE AND MACHINE LEARNING": "AI&ML",
+    "ARTIFICIAL INTELLIGENCE & MACHINE LEARNING": "AI&ML",
+    "AI AND ML": "AI&ML",
+    "AI & ML": "AI&ML",
+    "AIML": "AI&ML",
+    "COMPUTER SCIENCE AND INFORMATION TECHNOLOGY": "CSIT",
+    "CSIT": "CSIT",
+    "ELECTRONICS AND COMPUTER ENGINEERING": "ECM",
+    "ECM": "ECM",
+    "BIOTECHNOLOGY": "BIOTECH",
+    "BIO TECHNOLOGY": "BIOTECH",
+    "BT": "BIOTECH",
+}
+
+
+def normalize_branch_code(val: Any) -> str:
+    """Normalize branch string to a short uppercase standard code <= 20 chars."""
+    if not val:
+        return "CSE"
+    s = normalize_cell_as_string(val).strip().upper()
+    if not s:
+        return "CSE"
+    # Check exact synonym match
+    if s in BRANCH_SYNONYMS:
+        return BRANCH_SYNONYMS[s]
+    # Check cleaned text
+    cleaned = re.sub(r"[\s_\-\.]+", " ", s)
+    if cleaned in BRANCH_SYNONYMS:
+        return BRANCH_SYNONYMS[cleaned]
+    # If contains known branch keywords
+    for full_name, code in BRANCH_SYNONYMS.items():
+        if len(full_name) > 3 and full_name in cleaned:
+            return code
+    # Clean non-alphanumeric chars and truncate to 20 chars
+    clean_code = re.sub(r"[^\w\&\-]", "", s)[:20]
+    return clean_code if clean_code else "CSE"
+
+
+def normalize_batch_year(val: Any, default: int = 2027) -> int:
+    """Extract 4-digit or 2-digit batch year safely."""
+    if val is None:
+        return default
+    s = normalize_cell_as_string(val).strip()
+    if not s:
+        return default
+    # Try finding 4-digit year like 2026 or 2025
+    m4 = re.search(r"\b(20\d{2})\b", s)
+    if m4:
+        return int(m4.group(1))
+    # Try finding 2-digit year like 26 in '22-26' or '26'
+    m2 = re.search(r"\b(\d{2})\b", s)
+    if m2:
+        val2 = int(m2.group(1))
+        if 20 <= val2 <= 35:
+            return 2000 + val2
+    try:
+        fval = int(float(s))
+        if 1900 <= fval <= 2100:
+            return fval
+        if 20 <= fval <= 35:
+            return 2000 + fval
+    except Exception:
+        pass
+    return default
+
+
+def normalize_cgpa(val: Any, default: float = 0.0) -> float:
+    """Safely parse CGPA or percentage (0.00 to 10.00)."""
+    if val is None:
+        return default
+    s = normalize_cell_as_string(val).strip().replace("%", "").replace(",", ".")
+    if not s or s.lower() in ("na", "n/a", "nil", "none", "null", "-"):
+        return default
+    try:
+        cgpa = float(s)
+        if cgpa > 10.0 and cgpa <= 100.0:
+            cgpa = round(cgpa / 10.0, 2)
+        elif cgpa > 100.0:
+            cgpa = 10.0
+        cgpa = max(0.0, min(10.0, round(cgpa, 2)))
+        return cgpa
+    except Exception:
+        return default
+
+
+def normalize_backlogs(val: Any, default: int = 0) -> int:
+    """Safely parse integer backlogs count."""
+    if val is None:
+        return default
+    s = normalize_cell_as_string(val).strip()
+    if not s or s.lower() in ("no", "nil", "none", "na", "n/a", "-", "zero"):
+        return 0
+    try:
+        b = int(float(s))
+        return max(0, min(100, b))
+    except Exception:
+        return default
+
+
+def normalize_phone_number(val: Any) -> str | None:
+    """Extract phone number preserving leading + if present, up to 15 chars."""
+    if val is None:
+        return None
+    s = normalize_cell_as_string(val).strip()
+    if not s or s.lower() in ("na", "n/a", "nil", "none", "null", "-"):
+        return None
+    # If multiple phone numbers e.g. separated by slash or comma, take first
+    first_part = re.split(r"[/,;\s]+", s)[0].strip()
+    digits_only = re.sub(r"[^\d\+]", "", first_part)
+    if len(digits_only) < 7:
+        return None
+    return digits_only[:15]
+
+
+def normalize_personal_email(val: Any) -> str | None:
+    """Clean and validate personal email address."""
+    if val is None:
+        return None
+    s = normalize_cell_as_string(val).strip().replace(" ", "").lower()
+    if not s or s in ("na", "n/a", "nil", "none", "null", "-"):
+        return None
+    if "@" in s and "." in s:
+        return s[:255]
+    return None
+
+
+def normalize_gender(val: Any) -> str | None:
+    """Normalize gender to MALE, FEMALE, OTHER, or None."""
+    if val is None:
+        return None
+    s = normalize_cell_as_string(val).strip().upper()
+    if not s or s in ("NA", "N/A", "NONE", "NULL", "-"):
+        return None
+    if s.startswith("M") or s in ("BOY", "MAN", "MALE"):
+        return "MALE"
+    if s.startswith("F") or s in ("GIRL", "WOMAN", "FEMALE"):
+        return "FEMALE"
+    return "OTHER"
+
+
 def normalize_cell_as_string(val: Any) -> str:
     """
     Normalize a cell value to a clean string.

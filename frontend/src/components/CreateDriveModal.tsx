@@ -141,12 +141,12 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
     setDriveTitle(`${companyName} — ${effectiveRole}`);
   }, [selectedCompanyId, isCreatingNewCompany, newCompanyName, jobRole, customJobRole, companies]);
 
-  if (!isOpen) return null;
-
   // Retry & Error Recovery State
   const [createdDrive, setCreatedDrive] = useState<PlacementDrive | null>(null);
   const [createdStageIndexes, setCreatedStageIndexes] = useState<Set<number>>(new Set());
   const [showDismissConfirm, setShowDismissConfirm] = useState<boolean>(false);
+
+  if (!isOpen) return null;
 
   const isFormDirty =
     currentStep > 1 ||

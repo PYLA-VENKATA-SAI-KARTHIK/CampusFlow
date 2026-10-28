@@ -17,6 +17,7 @@ ENV/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+.local_storage/
 
 # Environment and secrets
 .env

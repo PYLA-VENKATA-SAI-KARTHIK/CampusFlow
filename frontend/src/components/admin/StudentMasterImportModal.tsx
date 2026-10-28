@@ -49,7 +49,18 @@ export const StudentMasterImportModal: React.FC<StudentMasterImportModalProps> =
       setPreview(res);
       setCustomMapping(res.detected_mappings || {});
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to parse and preview student list file.');
+      const detail = err?.response?.data?.detail;
+      let msg = 'Failed to parse and preview student list file.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((d: any) => (d.loc ? `${d.loc.slice(-1)}: ${d.msg}` : d.msg || JSON.stringify(d))).join('; ');
+      } else if (detail && typeof detail === 'object') {
+        msg = JSON.stringify(detail);
+      } else if (err?.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -77,7 +88,7 @@ export const StudentMasterImportModal: React.FC<StudentMasterImportModalProps> =
                 roll_number: item.roll_number,
                 full_name: item.full_name,
                 branch_code: item.branch_code || 'CSE',
-                batch_year: item.batch_year || 2026,
+                batch_year: item.batch_year || 2027,
                 cgpa: item.cgpa !== null && item.cgpa !== undefined ? item.cgpa : 0.0,
                 active_backlogs: item.active_backlogs || 0,
                 personal_email: item.personal_email,
@@ -97,7 +108,18 @@ export const StudentMasterImportModal: React.FC<StudentMasterImportModalProps> =
         onClose();
       }, 1800);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to commit master student list.');
+      const detail = err?.response?.data?.detail;
+      let msg = 'Failed to commit master student list.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((d: any) => (d.loc ? `${d.loc.slice(-1)}: ${d.msg}` : d.msg || JSON.stringify(d))).join('; ');
+      } else if (detail && typeof detail === 'object') {
+        msg = JSON.stringify(detail);
+      } else if (err?.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setConfirming(false);
     }
@@ -345,7 +367,7 @@ export const StudentMasterImportModal: React.FC<StudentMasterImportModalProps> =
                           <td className="px-3 py-2 font-mono font-semibold text-slate-900">{item.roll_number || '—'}</td>
                           <td className="px-3 py-2 font-medium">{item.full_name || '—'}</td>
                           <td className="px-3 py-2">{item.branch_code || 'CSE'}</td>
-                          <td className="px-3 py-2">{item.batch_year || 2026}</td>
+                          <td className="px-3 py-2">{item.batch_year || 2027}</td>
                           <td className="px-3 py-2">{item.cgpa != null ? Number(item.cgpa).toFixed(2) : '0.00'}</td>
                           <td className="px-3 py-2">
                             {item.status === 'VALID' ? (

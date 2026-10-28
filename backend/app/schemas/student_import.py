@@ -40,15 +40,15 @@ class StudentMasterImportPreviewResponse(BaseModel):
 
 
 class StudentMasterImportItem(BaseModel):
-    roll_number: str = Field(..., min_length=1, max_length=50)
-    full_name: str | None = Field(None, max_length=255)
-    branch_code: str = Field("CSE", max_length=20)
-    batch_year: int = Field(2026, ge=2000, le=2100)
-    cgpa: float = Field(0.0, ge=0.0, le=10.0)
-    active_backlogs: int = Field(0, ge=0, le=100)
-    personal_email: str | None = Field(None, max_length=255)
-    phone_number: str | None = Field(None, max_length=15)
-    gender: str | None = Field(None, max_length=10)
+    roll_number: str = Field(..., min_length=1, max_length=100)
+    full_name: str | None = Field(None, max_length=500)
+    branch_code: str = Field("CSE", max_length=100)
+    batch_year: int = Field(2027, ge=1900, le=2100)
+    cgpa: float = Field(0.0, ge=0.0, le=100.0)
+    active_backlogs: int = Field(0, ge=0, le=1000)
+    personal_email: str | None = Field(None, max_length=500)
+    phone_number: str | None = Field(None, max_length=50)
+    gender: str | None = Field(None, max_length=50)
 
 
 class StudentMasterImportConfirmRequest(BaseModel):

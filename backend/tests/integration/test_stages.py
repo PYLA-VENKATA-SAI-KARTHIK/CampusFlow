@@ -247,7 +247,7 @@ async def test_student_visibility_and_current_stage(async_client: AsyncClient, a
     drive_id = student_setup["drive_id"]
     student_id = student_setup["student_id"]
 
-    # 1. Create Stage (Unpublished)
+    # 1. Create Stage
     create_resp = await async_client.post(
         f"/api/v1/drives/{drive_id}/stages",
         json={"name": "Aptitude Test", "stage_type": "APTITUDE", "sequence_order": 1},
@@ -255,17 +255,12 @@ async def test_student_visibility_and_current_stage(async_client: AsyncClient, a
     )
     stage_id = create_resp.json()["id"]
 
-    # Student shouldn't see unpublished stage
+    # Student can see configured drive stage with my_status=None before shortlist
     list_resp = await async_client.get(f"/api/v1/drives/{drive_id}/stages", headers=auth_users["student"])
-    assert len(list_resp.json()) == 0
+    assert len(list_resp.json()) == 1
+    assert list_resp.json()[0]["my_status"] is None
 
-    # 2. Publish Stage, but no assignment
-    await async_client.post(f"/api/v1/drives/{drive_id}/stages/{stage_id}/publish", headers=auth_users["officer"])
-    
-    list_resp = await async_client.get(f"/api/v1/drives/{drive_id}/stages", headers=auth_users["student"])
-    assert len(list_resp.json()) == 0
-
-    # 3. Create mock assignment
+    # 2. Create assignment
     assignment = StageAssignment(
         stage_id=stage_id,
         student_user_id=student_id,
@@ -275,10 +270,11 @@ async def test_student_visibility_and_current_stage(async_client: AsyncClient, a
     db_session.add(assignment)
     await db_session.commit()
 
-    # Now student should see it
+    # Now student sees updated my_status
     list_resp = await async_client.get(f"/api/v1/drives/{drive_id}/stages", headers=auth_users["student"])
     assert len(list_resp.json()) == 1
     assert list_resp.json()[0]["id"] == stage_id
+    assert list_resp.json()[0]["my_status"] == "SHORTLISTED"
 
     # 4. Check applications endpoint my_current_stage
     apps_resp = await async_client.get("/api/v1/students/me/applications", headers=auth_users["student"])

@@ -4,7 +4,7 @@ Notification ORM model.
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,7 +14,14 @@ from app.db.base import Base
 class Notification(Base):
     __tablename__ = "notifications"
     __table_args__ = (
-        UniqueConstraint("user_id", "notification_type", "reference_id", name="uq_notifications_dedup"),
+        Index(
+            "uq_notifications_dedup_non_manual",
+            "user_id",
+            "notification_type",
+            "reference_id",
+            unique=True,
+            postgresql_where=text("notification_type != 'MANUAL_BROADCAST'"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(

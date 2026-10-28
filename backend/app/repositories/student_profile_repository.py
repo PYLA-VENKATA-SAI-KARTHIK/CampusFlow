@@ -76,11 +76,13 @@ class StudentProfileRepository:
         if min_cgpa is not None:
             base_stmt = base_stmt.where(StudentProfile.cgpa >= min_cgpa)
         if search:
-            search_term = f"%{search}%"
+            search_term = f"%{search.strip()}%"
             base_stmt = base_stmt.where(
                 (StudentProfile.roll_number.ilike(search_term)) |
                 (User.full_name.ilike(search_term)) |
-                (User.email.ilike(search_term))
+                (User.email.ilike(search_term)) |
+                (StudentProfile.personal_email.ilike(search_term)) |
+                (StudentProfile.branch_code.ilike(search_term))
             )
 
         count_stmt = select(func.count()).select_from(base_stmt.subquery())

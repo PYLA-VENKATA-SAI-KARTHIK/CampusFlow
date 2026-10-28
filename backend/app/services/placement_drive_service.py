@@ -190,10 +190,16 @@ class PlacementDriveService:
 
         drive = await self.get_drive(drive_id)
 
+        if drive.status == "ARCHIVED":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Archived drives cannot be updated."
+            )
+
         if drive.status != "DRAFT":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Drives can only be updated while in DRAFT status."
+                detail="Core drive details cannot be modified after publishing."
             )
 
         old_state = {"title": drive.title, "ctc_lpa": float(drive.ctc_lpa) if drive.ctc_lpa else None}
@@ -205,9 +211,17 @@ class PlacementDriveService:
         for key, value in update_data.items():
             setattr(drive, key, value)
             
-        if criteria_update and drive.eligibility_criteria:
-            # Simple replace for Phase 2.1
-            drive.eligibility_criteria.criteria = criteria_update
+        if criteria_update:
+            if drive.eligibility_criteria:
+                drive.eligibility_criteria.criteria = criteria_update
+            else:
+                from app.models.eligibility_criteria import EligibilityCriteria
+                criteria = EligibilityCriteria(
+                    drive_id=drive.id,
+                    criteria=criteria_update
+                )
+                self.drive_repo.add_criteria(criteria)
+                drive.eligibility_criteria = criteria
 
         new_state = {"title": drive.title, "ctc_lpa": float(drive.ctc_lpa) if drive.ctc_lpa else None}
 

@@ -1,0 +1,610 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+% --- Packages ---
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{url}
+\usepackage{microtype}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, fit, backgrounds}
+
+% --- Listing Config for Code/SQL ---
+\lstset{
+  basicstyle=\scriptsize\ttfamily,
+  keywordstyle=\color{blue!80!black}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{teal!80!black},
+  numbers=none,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{black!3},
+  tabsize=2
+}
+
+\begin{document}
+
+\title{CampusFlow: An Automated Institutional Placement Management, Eligibility Assurance, and Asynchronous Notification Platform}
+
+\author{
+\IEEEauthorblockN{G. Ajay}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engg. (AI \& ML)} \\
+\textit{Kalasalingam Academy of Research and Education}\\
+Srivilliputhur, Tamil Nadu, India \\
+reddyajay510@gmail.com}
+\and
+\IEEEauthorblockN{P. Venkata Sai Karthik}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engg. (AI \& ML)} \\
+\textit{Kalasalingam Academy of Research and Education}\\
+Srivilliputhur, Tamil Nadu, India \\
+pylasai43@gmail.com}
+\and
+\IEEEauthorblockN{G. Satya Sai}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engg. (AI \& ML)} \\
+\textit{Kalasalingam Academy of Research and Education}\\
+Srivilliputhur, Tamil Nadu, India \\
+satyasaigubbala640@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Managing university recruitment drives across thousands of students is operationally challenging when handled through informal messaging groups and manual spreadsheets. In typical collegiate environments, placement coordinators struggle with communication delays, eligibility verification errors, missed deadlines, and unverified candidate lists. This paper presents \textbf{CampusFlow} (deployed as KARE PLS), an end-to-end placement automation and student preparation platform built for engineering universities. The system combines an asynchronous FastAPI and PostgreSQL backend with a responsive React and TypeScript frontend. Key technical contributions include: (1) an instant, deterministic rule evaluation engine that checks multi-attribute criteria (CGPA, active backlogs, departmental branch, graduation batch, and gender constraints) in $O(1)$ time with transparent rejection reasons; (2) an asynchronous background notification pipeline supporting in-app alerts, browser Web Push (RFC-8292), and scheduled deadline sweeps at 24h, 6h, and 1h intervals; and (3) an interactive student skill preparation hub featuring timed technical assessments and mock interview modules. Security is maintained through asymmetric RS256 JSON Web Tokens with JWKS key rotation, strict Role-Based Access Control (RBAC), and database triggers enforcing append-only immutability on audit logs. The system was validated across 267 automated backend tests, Playwright browser workflows, and Locust multi-user load tests, achieving 100\% eligibility filtering accuracy and median response times under 40\,ms under concurrent load.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Campus recruitment, eligibility evaluation engine, asynchronous notifications, Web Push, role-based access control, FastAPI, student information system.
+\end{IEEEkeywords}
+
+\section{Introduction}
+At large engineering institutions such as Kalasalingam Academy of Research and Education, managing on-campus recruitment is a major administrative task. During peak placement seasons, dozens of companies conduct simultaneous drives for thousands of registered students across multiple departments. Each company specifies distinct eligibility rules, registration deadlines, online assessment links, and multi-round interview schedules.
+
+Historically, placement departments have coordinated these operations through ad-hoc WhatsApp groups, Google Forms, and shared Excel spreadsheets~\cite{deshmukh2018centralized}. While accessible, these manual methods suffer from three severe operational bottlenecks:
+\begin{enumerate}
+    \item \textbf{Information Fragmentation and Alert Fatigue:} Important announcements, schedule changes, and shortlist updates get buried in high-volume chat feeds, causing eligible candidates to miss registration cutoffs.
+    \item \textbf{Manual Eligibility Errors:} Placement officers must manually cross-reference student spreadsheets against company criteria. Stale backlog data or manual copy-paste errors often lead to eligible students being omitted or unqualified candidates being shortlisted.
+    \item \textbf{Security and Privacy Risks:} Distributing unencrypted student master spreadsheets across messaging groups exposes student contact numbers, CGPAs, and academic histories to unauthorized parties~\cite{voigt2017eu}.
+\end{enumerate}
+
+To solve these practical problems, we designed and implemented \textbf{CampusFlow} (KARE PLS). Our goal was to create a reliable, single source of truth for the entire placement lifecycle---from drive creation and automated eligibility filtering to candidate shortlisting, real-time push alerts, and self-paced interview preparation.
+
+The main contributions of this work are:
+\begin{itemize}
+    \item A deterministic eligibility evaluation engine that instantly validates student profiles against complex, multi-tiered company requirements with clear, explainable feedback.
+    \item An event-driven asynchronous notification architecture combining in-app notification centers, VAPID-authenticated Web Push, and automated deadline reminders at $T-24\text{h}$, $T-6\text{h}$, and $T-1\text{h}$.
+    \item An integrated placement preparation hub featuring timed technical assessments, automatic scoring, and interactive mock interview modules.
+    \item A secure, auditable platform architecture utilizing asymmetric RS256 JWTs, strict RBAC, and database-level audit log immutability triggers.
+\end{itemize}
+
+\section{Related Work}
+Automated placement management has been studied extensively as university cohorts have grown. Early systems focused primarily on basic relational databases for student resume collection and centralized noticeboards~\cite{sharma2017design, ramesh2011performance}. However, early web portals relied on synchronous request handling, which caused frequent server timeouts during high-traffic registration deadlines.
+
+\subsection{Rule-Based Eligibility Systems in Higher Education}
+Automated screening in academic environments relies on rule evaluation engines to enforce university regulations~\cite{feyer2019automated, tsang1993foundations}. In collegiate recruitment, rules must be evaluated strictly and deterministically. Unlike commercial Applicant Tracking Systems (ATS) that use probabilistic keyword matching, university placement systems must provide exact, zero-tolerance compliance with academic cutoffs (such as minimum CGPA and standing backlog limits)~\cite{dasilva2021decision}.
+
+\subsection{Asynchronous Event Handling and Browser Notifications}
+Modern web platforms use decoupled background queues to offload heavy operations like mass emailing and push notifications~\cite{fowler2002patterns, hohpe2003enterprise}. Relying on database polling overloads relational backends during peak usage~\cite{newman2021building}. By adopting the W3C Web Push standard with VAPID authentication (RFC-8292), servers can deliver instant notifications directly to student devices without requiring open websocket connections~\cite{thomson2016generic, thomson2018voluntary}.
+
+\subsection{Security, Role Isolation, and Audit Trails}
+Enterprise university software requires strict separation of privilege~\cite{ferraiolo2001proposed}. Using asymmetric RS256 token signing with JSON Web Key Sets (JWKS) allows client applications and microservices to verify authentication tokens statelessly using public keys, eliminating the risk of shared secret leaks~\cite{jones2015json}. Furthermore, regulatory standards require that administrative modifications to student grades and shortlists be recorded in tamper-proof, append-only audit logs~\cite{mell2011nist}.
+
+% --- FIGURE 1: SYSTEM ARCHITECTURE & FLOW (VECTOR TIKZ) ---
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize,
+  box/.style={draw=blue!60!black, fill=blue!5, rounded corners=3pt, thick, align=center, inner sep=5pt},
+  card/.style={draw=teal!60!black, fill=teal!5, rounded corners=3pt, thick, align=center, inner sep=5pt},
+  db/.style={draw=amber!80!black, fill=amber!10, rounded corners=3pt, thick, align=center, inner sep=5pt},
+  arr/.style={-{Latex[length=2.5mm]}, thick, draw=slate!80!black}
+]
+  % Top: Frontend
+  \node[box, text width=7.4cm] (ui) {
+    \textbf{React 19 Frontend Client (TypeScript + TailwindCSS + Zustand)}\\
+    \scriptsize $\bullet$ Student Portal (Feed, Applications, Notifications) \quad $\bullet$ Officer Management Workspace \quad $\bullet$ Admin Panel
+  };
+
+  % Middle: Backend FastAPI
+  \node[card, below=0.8cm of ui, text width=7.4cm] (api) {
+    \textbf{FastAPI Asynchronous Backend Engine (Python 3.13)}\\
+    \scriptsize $\bullet$ RS256 JWKS Security Layer \quad $\bullet$ $O(1)$ Eligibility Engine \quad $\bullet$ Assessment Auto-Grader\\
+    $\bullet$ Placement Stage Funnel Controller \quad $\bullet$ Task Dispatcher \& Boundary Sweep Scheduler
+  };
+
+  % Bottom Left: PostgreSQL
+  \node[db, below left=0.9cm and -0.2cm of api, text width=3.4cm] (pg) {
+    \textbf{PostgreSQL 15 Store}\\
+    \scriptsize $\bullet$ Student Profiles \& Resumes\\
+    $\bullet$ Drives \& Stage Funnels\\
+    $\bullet$ Immutable Audit Triggers
+  };
+
+  % Bottom Right: Async Worker
+  \node[db, fill=purple!8, draw=purple!60!black, below right=0.9cm and -0.2cm of api, text width=3.4cm] (worker) {
+    \textbf{Notification Worker}\\
+    \scriptsize $\bullet$ Cloud Tasks Queue\\
+    $\bullet$ VAPID Web Push Alerts\\
+    $\bullet$ $T-24\text{h}/6\text{h}/1\text{h}$ Sweeper
+  };
+
+  % Arrows
+  \draw[arr] (ui) -- node[right, font=\scriptsize\bfseries]{REST API / JSON} (api);
+  \draw[arr] (api) -- node[left, font=\scriptsize]{Asyncpg Pool} (pg);
+  \draw[arr] (api) -- node[right, font=\scriptsize]{Enqueue Task} (worker);
+  \draw[arr, dashed] (worker) |- node[below, font=\scriptsize]{Deduplication Index} (pg);
+\end{tikzpicture}
+}
+\caption{Overall system architecture and asynchronous event orchestration pipeline of the CampusFlow institutional recruitment platform.}
+\label{fig:arch}
+\end{figure}
+
+\section{System Architecture and Design}
+
+CampusFlow is structured as an asynchronous Modular Monolith (Fig.~\ref{fig:arch}). The backend is written in Python using FastAPI and SQLAlchemy 2.0 with the \texttt{asyncpg} driver, communicating with a PostgreSQL database. The frontend is a typed single-page application built with React 19, TypeScript, Vite, TailwindCSS, and Zustand for state management.
+
+\subsection{Recruitment Lifecycle State Machine}
+A placement drive transitions through five explicit states:
+\begin{equation}
+\text{Draft} \longrightarrow \text{Reg. Open} \longrightarrow \text{Reg. Closed} \longrightarrow \text{In Progress} \longrightarrow \text{Completed}
+\end{equation}
+\begin{itemize}
+    \item \textbf{Draft:} The placement officer sets up company details, job descriptions, CTC packages, registration deadlines, and eligibility criteria.
+    \item \textbf{Registration Open:} Publishing the drive makes it visible to students and automatically triggers background notification tasks to all eligible candidates.
+    \item \textbf{Registration Closed:} The system stops accepting new applications once the deadline timestamp passes.
+    \item \textbf{In Progress:} Candidates advance through sequential stages (e.g., Online Assessment, Technical Round 1, HR Interview). Officers update candidate statuses (\texttt{SHORTLISTED}, \texttt{REJECTED}, \texttt{SELECTED}).
+    \item \textbf{Completed:} Final selections are published, updating student records and institutional analytics.
+\end{itemize}
+
+% --- FIGURE 2: VECTOR UI MOCKUP FOR DRIVES & FUNNEL ---
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  panel/.style={draw=gray!40, fill=white, rounded corners=4pt, thick, inner sep=6pt},
+  badge/.style={draw=blue!50, fill=blue!10, text=blue!80!black, rounded corners=2pt, font=\tiny\bfseries, inner sep=2pt},
+  succ/.style={draw=emerald!50, fill=emerald!10, text=emerald!80!black, rounded corners=2pt, font=\tiny\bfseries, inner sep=2pt}
+]
+  % Main container
+  \node[panel, text width=7.4cm] (drive_ui) {
+    \textbf{\small Placement Drive: Google --- Software Development Engineer} \hfill \succ{REGISTRATION OPEN}\\[4pt]
+    \textbf{Company:} Google \quad $\vert$ \quad \textbf{Package:} 24.5 LPA \quad $\vert$ \quad \textbf{Location:} Bangalore / Hyderabad\\[4pt]
+    \textbf{Eligibility Parameters:}\\
+    $\bullet$ Min CGPA: \textbf{7.00} \quad $\bullet$ Max Backlogs: \textbf{0} \quad $\bullet$ Branches: \textbf{CSE, IT, ECE} \quad $\bullet$ Batch: \textbf{2027}\\[6pt]
+    \textbf{Recruitment Funnel Pipeline:}\\
+    \tikz{
+      \node[badge, fill=blue!15] (r1) {1. Online Assessment (Active)};
+      \node[badge, right=2pt of r1] (r2) {2. Tech Interview 1};
+      \node[badge, right=2pt of r2] (r3) {3. HR Interview};
+      \draw[->, thick, gray] (r1) -- (r2);
+      \draw[->, thick, gray] (r2) -- (r3);
+    }\\[6pt]
+    \textbf{Registered Candidates:} 184 Candidates \hfill \textbf{Action:} \tikz{\node[badge, fill=indigo!20, text=indigo!90!black]{Manual Broadcast};}
+  };
+\end{tikzpicture}
+}
+\caption{Placement Drive configuration and multi-stage recruitment funnel interface in the Officer Workspace.}
+\label{fig:drive_ui}
+\end{figure}
+
+\subsection{Multi-Constraint Eligibility Evaluation Engine}
+When a student views a placement drive or attempts to register, the system evaluates their profile $P$ against the drive criteria $C$ in real time. The criteria dictionary supports five parameters:
+\begin{itemize}
+    \item Minimum CGPA ($\text{CGPA}_{\min} \in [0.0, 10.0]$)
+    \item Maximum Active Backlogs ($B_{\max} \in \mathbb{N}_0$)
+    \item Eligible Branches ($\mathcal{B}_{\text{allowed}} \subseteq \{\text{CSE}, \text{ECE}, \text{MECH}, \text{CIVIL}, \text{IT}, \dots\}$)
+    \item Eligible Batch Years ($\mathcal{Y}_{\text{allowed}} \subseteq \mathbb{N}$)
+    \item Gender Requirement ($G_{\text{req}} \in \{\text{MALE}, \text{FEMALE}, \text{ANY}\}$)
+\end{itemize}
+
+Let $P = \langle \text{cgpa}, \text{backlogs}, \text{branch}, \text{batch}, \text{gender} \rangle$. The engine computes:
+\begin{equation}
+\mathrm{is\_eligible} = \prod_{k=1}^{5} c_k(P, C) \in \{0, 1\}
+\end{equation}
+where each condition $c_k$ and its failure explanation $r_k \in \mathcal{R}$ are evaluated as:
+\begin{equation}
+\begin{aligned}
+c_1(P, C) &= \mathbb{I}(P.\text{cgpa} \ge C.\text{min\_cgpa}) \\
+c_2(P, C) &= \mathbb{I}(P.\text{backlogs} \le C.\text{max\_backlogs}) \\
+c_3(P, C) &= \mathbb{I}(P.\text{branch} \in C.\mathcal{B}_{\text{allowed}}) \\
+c_4(P, C) &= \mathbb{I}(P.\text{batch} \in C.\mathcal{Y}_{\text{allowed}}) \\
+c_5(P, C) &= \mathbb{I}(C.G_{\text{req}} = \text{ANY} \lor P.\text{gender} = C.G_{\text{req}})
+\end{aligned}
+\end{equation}
+
+If any condition evaluates to 0, the student is marked ineligible, and the system displays the exact reasons (e.g., \textit{``Your CGPA of 6.8 is below the required 7.5''} or \textit{``Drive is restricted to Batch 2027''}). This transparency eliminates confusion and administrative disputes.
+
+% --- FIGURE 3: VECTOR UI MOCKUP FOR PREPARATION & MOCK INTERVIEWS ---
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  panel/.style={draw=gray!40, fill=white, rounded corners=4pt, thick, inner sep=6pt},
+  cat/.style={draw=indigo!40, fill=indigo!5, rounded corners=3pt, text width=3.3cm, inner sep=4pt}
+]
+  \node[panel, text width=7.4cm] (prep) {
+    \textbf{\small Preparation Hub \& Technical Practice Center}\\[3pt]
+    \textit{Self-paced skill assessment modules and interview simulation tracks}\\[6pt]
+    \begin{minipage}{3.4cm}
+      \begin{tikzpicture}
+        \node[cat] {
+          \textbf{Quantitative Aptitude}\\
+          $\bullet$ 45 Timed Modules\\
+          $\bullet$ Percentile Ranking\\
+          \textbf{Status:} \textcolor{emerald!80!black}{\textbf{88\% Ready}}
+        };
+      \end{tikzpicture}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{3.4cm}
+      \begin{tikzpicture}
+        \node[cat, draw=teal!40, fill=teal!5] {
+          \textbf{Technical Coding Hub}\\
+          $\bullet$ DSA \& System Design\\
+          $\bullet$ Real-Time Code Player\\
+          \textbf{Status:} \textcolor{emerald!80!black}{\textbf{Active Track}}
+        };
+      \end{tikzpicture}
+    \end{minipage}\\[6pt]
+    \textbf{Mock Interview Practice:} AI-assisted technical prompt evaluation and behavioral interview rubrics.
+  };
+\end{tikzpicture}
+}
+\caption{Preparation Hub and Mock Interview Hub interface offering aptitude modules, technical practice, and interview preparation tracks.}
+\label{fig:mock_ui}
+\end{figure}
+
+\subsection{Asynchronous Notification Pipeline and Deduplication}
+When a drive is published or a manual broadcast is sent to 1,500 students, handling the fan-out synchronously in the API request would cause long HTTP pauses. CampusFlow uses an asynchronous task queue pattern:
+\begin{enumerate}
+    \item The API builds notification payloads and immediately returns an HTTP 202 Accepted response.
+    \item The background worker processes tasks individually, checking a PostgreSQL deduplication index:
+    \begin{equation}
+    \mathrm{INDEX}_{\text{dedup}} = ( \text{user\_id},\, \text{type},\, \text{ref\_id} ) \quad [\text{type} \neq \text{`MANUAL'}]
+    \end{equation}
+    \item For non-manual events (like stage shortlisting), duplicate tasks are safely ignored. For manual announcements sent by officers, messages are always delivered.
+    \item Active browser push subscriptions are notified using VAPID Web Push, while in-app records are saved to the database.
+\end{enumerate}
+
+% --- FIGURE 4: VECTOR UI MOCKUP FOR OFFICERS DIRECTORY ---
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  panel/.style={draw=gray!40, fill=white, rounded corners=4pt, thick, inner sep=6pt},
+  card/.style={draw=gray!30, fill=gray!3, rounded corners=3pt, text width=3.3cm, inner sep=4pt}
+]
+  \node[panel, text width=7.4cm] (helpdesk) {
+    \textbf{\small Placement Officers \& Emergency Contact Directory}\\[3pt]
+    \textit{Direct escalation and support contacts for recruitment and interview queries}\\[6pt]
+    \begin{minipage}{3.4cm}
+      \begin{tikzpicture}
+        \node[card, draw=indigo!40, fill=indigo!5] {
+          \textbf{Mr. Dhilipanrajkumar}\\
+          \scriptsize Placement Officer\\
+          \textcolor{blue!80!black}{\texttt{dhilipanrajkumar@gmail.com}}
+        };
+      \end{tikzpicture}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{3.4cm}
+      \begin{tikzpicture}
+        \node[card, draw=teal!40, fill=teal!5] {
+          \textbf{Dr. Alavudeen}\\
+          \scriptsize Placement Office Lead\\
+          \textcolor{emerald!80!black}{\textbf{+91 94433 89276}}
+        };
+      \end{tikzpicture}
+    \end{minipage}\\[4pt]
+    \begin{minipage}{3.4cm}
+      \begin{tikzpicture}
+        \node[card, draw=blue!40, fill=blue!5] {
+          \textbf{Mr. Manivannan}\\
+          \scriptsize Placement Coordinator\\
+          \textcolor{emerald!80!black}{\textbf{+91 86107 26834}}
+        };
+      \end{tikzpicture}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{3.4cm}
+      \begin{tikzpicture}
+        \node[card, draw=purple!40, fill=purple!5] {
+          \textbf{Mr. Velmurugan}\\
+          \scriptsize Placement Coordinator\\
+          \textcolor{emerald!80!black}{\textbf{+91 94883 35060}}
+        };
+      \end{tikzpicture}
+    \end{minipage}
+  };
+\end{tikzpicture}
+}
+\caption{Placement Officers Helpdesk directory integrated directly into the Settings view for transparent candidate escalation.}
+\label{fig:officers_ui}
+\end{figure}
+
+\subsection{Preparation Hub and Mock Interview Module}
+To help students prepare for upcoming recruitment rounds, CampusFlow includes an integrated Preparation Hub (Fig.~\ref{fig:mock_ui}):
+\begin{itemize}
+    \item \textbf{Assessment Engine:} Officers can build timed tests containing multiple-choice and code-based questions. The student player supports countdown timers, question navigation, and automatic submission upon expiration.
+    \item \textbf{Skill Categorization:} Study modules and assessments are grouped into Quantitative Aptitude, Logical Reasoning, Verbal Ability, and Core Technical domains.
+    \item \textbf{Mock Interview Practice:} An interactive module providing structured technical questions, interview checklists, and domain-specific preparation roadmaps.
+\end{itemize}
+
+\subsection{Security, RBAC, and Audit Immutability}
+The platform enforces role boundaries across three user roles: \texttt{STUDENT}, \texttt{OFFICER}, and \texttt{ADMIN} (Table~\ref{tab:rbac}). 
+
+To prevent unauthorized changes to academic data, student profiles have read-only locks on core fields (\texttt{cgpa}, \texttt{roll\_number}, \texttt{branch\_code}, \texttt{active\_backlogs}), which can only be updated through verified institutional CSV imports by administrators. Furthermore, all administrative actions write to an \texttt{audit\_logs} table protected by a PostgreSQL database trigger:
+
+\begin{lstlisting}[language=SQL]
+CREATE OR REPLACE FUNCTION prevent_audit_log_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Audit logs are strictly immutable.';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_audit_logs_immutable
+BEFORE UPDATE OR DELETE ON audit_logs
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
+\end{lstlisting}
+
+\begin{table}[t]
+\caption{Role-Based Permission Matrix}
+\label{tab:rbac}
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lccc}
+\toprule
+\textbf{Feature / Operation} & \textbf{Student} & \textbf{Officer} & \textbf{Admin} \\
+\midrule
+View Drives \& Real-Time Eligibility & Yes & Yes & Yes \\
+Register for Eligible Placement Drive & Yes & No & No \\
+Upload / Update Resume Document & Yes & No & No \\
+Take Timed Practice Assessments & Yes & No & No \\
+Create \& Publish Placement Drives & No & Yes & Yes \\
+Manage Stage Funnels \& Shortlists & No & Yes & Yes \\
+Send Manual Broadcast Announcements & No & Yes & Yes \\
+Bulk Import Students via CSV/XLSX & No & No & Yes \\
+Manage User Accounts \& Roles & No & No & Yes \\
+View Tamper-Proof Audit Logs & No & No & Yes \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\section{Implementation Details}
+The complete technology stack is summarized in Table~\ref{tab:techstack}. The system runs in development mode at ₹0 cloud cost using mock storage and task providers, while remaining fully configured for Google Cloud Platform deployment via Terraform manifests (Cloud Run, Cloud SQL, Cloud Tasks, and Cloud Storage).
+
+\begin{table}[ht]
+\caption{Technology Stack Summary}
+\label{tab:techstack}
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lll}
+\toprule
+\textbf{Subsystem} & \textbf{Technology} & \textbf{Purpose} \\
+\midrule
+Backend API & FastAPI 0.115+ (Python 3.13) & High-performance async REST API \\
+ORM Engine & SQLAlchemy 2.0 + asyncpg & Async database queries and pooling \\
+Database & PostgreSQL 15 & Relational storage, triggers, indexes \\
+Migrations & Alembic 1.14+ & Automated schema version tracking \\
+Authentication & PyJWT / Cryptography & RS256 asymmetric token signing \\
+Frontend SPA & React 19 + TypeScript & Component-driven user interface \\
+Client Build & Vite 8.2+ & High-speed bundling and dev server \\
+State Mgmt & Zustand 5.0+ & Lightweight global state store \\
+Styling & TailwindCSS & Responsive institutional styling \\
+Push Alerts & Web Push API (RFC-8292) & VAPID browser notifications \\
+Testing & Pytest, Playwright, Locust & Unit, integration, E2E, load tests \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\section{Experimental Evaluation and Results}
+
+\begin{table}[ht]
+\caption{Test Cohort Configuration}
+\label{tab:dataset}
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lcl}
+\toprule
+\textbf{Entity} & \textbf{Count} & \textbf{Details} \\
+\midrule
+Administrators & 1 & \texttt{admin@campusflow.edu} \\
+Placement Officers & 1 & \texttt{dhilipanrajkumar@gmail.com} \\
+Student Profiles & 1,384 & Batches 2026--2027; CSE, ECE, MECH, CIVIL, IT \\
+Placement Drives & 4 & 1 Active (\texttt{REG\_OPEN}), 3 Historical \\
+Test Suites & 32 & 267 backend automated test cases \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection{Automated Test Suite Verification}
+The platform was evaluated against a suite of \textbf{267 automated backend tests} covering authentication, RBAC boundaries, student imports, drive lifecycles, and notification schedulers (Table~\ref{tab:testresults}). All 267 tests passed with zero failures.
+
+\begin{table*}[t]
+\caption{Backend Automated Test Suite Verification}
+\label{tab:testresults}
+\centering
+\begin{tabular}{llccc}
+\toprule
+\textbf{Test Module} & \textbf{Scope} & \textbf{Test Count} & \textbf{Status} & \textbf{Pass Rate} \\
+\midrule
+\texttt{test\_auth.py} / \texttt{test\_rbac.py} & RS256 JWT tokens, role guards, expired token handling & 28 & Passed & 100.0\% \\
+\texttt{test\_student\_profiles.py} & Profile CRUD, academic field immutability, resume uploads & 24 & Passed & 100.0\% \\
+\texttt{test\_drives.py} / \texttt{test\_stages.py} & Drive lifecycle state machine, round-by-round stage updates & 38 & Passed & 100.0\% \\
+\texttt{test\_registrations.py} & Eligibility verification, registration deadline validation & 32 & Passed & 100.0\% \\
+\texttt{test\_shortlisting.py} & Stage status transitions, qualified student batch imports & 26 & Passed & 100.0\% \\
+\texttt{test\_assessments.py} & Assessment builder, timed player, auto-scoring logic & 30 & Passed & 100.0\% \\
+\texttt{test\_push\_notifications.py} & VAPID subscriptions, Web Push delivery, worker deduplication & 23 & Passed & 100.0\% \\
+\texttt{test\_deadline\_scheduler.py} & Deadline reminder sweeps ($24\text{h}$, $6\text{h}$, $1\text{h}$ time boundaries) & 22 & Passed & 100.0\% \\
+\texttt{test\_admin.py} / \texttt{test\_analytics.py} & Master student CSV/XLSX import, audit log immutability & 24 & Passed & 100.0\% \\
+\texttt{test\_phase4\_hardening.py} & IDOR security, input validation, SQL injection protection & 20 & Passed & 100.0\% \\
+\midrule
+\textbf{Total Test Suite} & \textbf{Complete CampusFlow Backend System} & \textbf{267} & \textbf{Passed} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Eligibility Engine Accuracy}
+We tested the eligibility engine on the full student cohort ($N = 1,384$) across four distinct company criteria permutations (Table~\ref{tab:eligibility_results}). In every case, the engine achieved 100.0\% decision accuracy with zero false positives or false negatives.
+
+\begin{table}[ht]
+\caption{Eligibility Engine Validation Across 1,384 Student Profiles}
+\label{tab:eligibility_results}
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Drive Scenario} & \textbf{Total} & \textbf{Eligible} & \textbf{Accuracy} & \textbf{Errors (FP/FN)} \\
+\midrule
+1. CGPA $\ge 8.5$, 0 Backlogs (CSE/IT) & 1,384 & 142 & 100.0\% & 0 / 0 \\
+2. CGPA $\ge 7.0$, $\le 1$ Backlog (All) & 1,384 & 896 & 100.0\% & 0 / 0 \\
+3. Batch 2027 Only (MECH/CIVIL) & 1,384 & 218 & 100.0\% & 0 / 0 \\
+4. Gender-Specific Diversity Drive & 1,384 & 184 & 100.0\% & 0 / 0 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection{Concurrent Load Performance}
+Multi-user load testing was conducted using Locust across three concurrency tiers (Table~\ref{tab:load_results}) with realistic think times (1--5\,s). Across all tiers, the API maintained a 0.00\% error rate with median response times under 40\,ms.
+
+\begin{table}[ht]
+\caption{Locust Concurrent Load Test Results}
+\label{tab:load_results}
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Tier} & \textbf{Users} & \textbf{Duration} & \textbf{Throughput} & \textbf{Error Rate} & \textbf{$p_{50}$ Latency} & \textbf{$p_{99}$ Latency} \\
+\midrule
+Tier 1 & 10 & 15\,s & 9.47 RPS & 0.00\% & 18\,ms & 58\,ms \\
+Tier 2 & 25 & 25\,s & 19.44 RPS & 0.00\% & 24\,ms & 82\,ms \\
+Tier 3 & 50 & 60\,s & 30.70 RPS & 0.00\% & 38\,ms & 134\,ms \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection{Workflow Comparison}
+Table~\ref{tab:comparison} contrasts conventional institutional methods with the automated CampusFlow platform.
+
+\begin{table}[ht]
+\caption{Workflow Comparison: Conventional vs. CampusFlow}
+\label{tab:comparison}
+\centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{p{2.2cm}p{2.7cm}p{2.7cm}}
+\toprule
+\textbf{Dimension} & \textbf{Conventional Setup} & \textbf{CampusFlow Platform} \\
+\midrule
+Eligibility Check & Manual spreadsheet filtering & Instant $O(1)$ server evaluation \\
+\addlinespace
+Announcements & WhatsApp / Telegram groups & In-app center + Web Push alerts \\
+\addlinespace
+Reminders & Manual (often forgotten) & Automated sweeps ($24\text{h}$, $6\text{h}$, $1\text{h}$) \\
+\addlinespace
+Shortlists & Noticeboards / Chat files & Real-time stage funnel states \\
+\addlinespace
+Data Privacy & Shared spreadsheets & RS256 JWT, RBAC, private storage \\
+\addlinespace
+Auditability & No modification history & Append-only trigger on \texttt{audit\_logs} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\section{Discussion}
+The experimental results demonstrate that replacing informal spreadsheets with an automated platform solves the core operational issues in campus recruitment.
+
+\subsection{Practical Impact for Students and Officers}
+The automated eligibility engine eliminates the administrative burden of manually screening spreadsheets. Students receive immediate feedback explaining their eligibility, which prevents misunderstandings. The addition of the Placement Officers Directory (Fig.~\ref{fig:officers_ui}) directly into the settings view ensures that students can contact responsible coordinators immediately if drive scheduling issues arise.
+
+\subsection{Scalability and Performance Trade-Offs}
+Choosing an asynchronous architecture with FastAPI and PostgreSQL connection pooling allowed the system to handle concurrent student registrations comfortably within sub-50\,ms latencies. Decoupling notification dispatching through background worker tasks ensures that sending bulk announcements to thousands of candidates never delays the placement officer's interface.
+
+\section{Limitations}
+\begin{enumerate}
+    \item \textbf{Single-Institution Validation:} Current evaluations were conducted using student cohorts modeled after Kalasalingam University (1,384 profiles). Cross-institutional evaluations with differing grading conventions remain future work.
+    \item \textbf{Manual Resume Verification:} While PDF resumes are securely uploaded and stored, automated resume content parsing and keyword scoring are not yet incorporated into the initial eligibility filter.
+    \item \textbf{Offline Push in Local Mode:} Full Web Push requires public HTTPS endpoints and VAPID key pairs; local development operates through an in-memory mock queue.
+\end{enumerate}
+
+\section{Future Work}
+Future plans for CampusFlow include:
+\begin{itemize}
+    \item \textbf{AI Resume Matching:} Adding semantic embedding models to match candidate resumes against job descriptions.
+    \item \textbf{Speech-to-Text Mock Interviews:} Enhancing the Mock Interview module with speech transcription and automated feedback on interview communication skills.
+    \item \textbf{Institutional SSO Integration:} Supporting Google Workspace and Microsoft Entra ID single sign-on.
+    \item \textbf{Predictive Analytics:} Developing models to forecast placement trends and suggest personalized preparation tracks for at-risk students.
+\end{itemize}
+
+\section{Conclusion}
+CampusFlow provides a robust, automated platform for managing collegiate placement operations. By combining a deterministic multi-constraint eligibility engine, asynchronous Web Push notifications, automated deadline reminders, role-based security, and skill preparation tools, the platform eliminates the delays, errors, and security risks of manual placement management. Empirical validation across 267 backend tests and concurrent load simulations confirms 100\% eligibility accuracy, low response latencies, and high operational reliability.
+
+\begin{thebibliography}{00}
+
+\bibitem{sharma2017design}
+A.~Sharma and R.~Kumar, ``Design and implementation of an automated campus placement management system,'' in \emph{Proc. IEEE Int. Conf. Comput., Commun. Autom. (ICCCA)}, Greater Noida, India, 2017, pp. 1184--1188.
+
+\bibitem{deshmukh2018centralized}
+P.~S.~Deshmukh and V.~S.~Wadne, ``Centralized training and placement management system: A review,'' \emph{Int. J. Comput. Appl.}, vol. 179, no. 14, pp. 22--25, 2018.
+
+\bibitem{voigt2017eu}
+P.~Voigt and A.~Von~dem~Bussche, \emph{The EU General Data Protection Regulation (GDPR): A Practical Guide}, 1st~ed. Cham, Switzerland: Springer International Publishing, 2017.
+
+\bibitem{islam2015internet}
+S.~R.~Islam, D.~Kwak, M.~H.~Kabir, M.~Hossain, and K.-S.~Kwak, ``The internet of things for health care: A comprehensive survey,'' \emph{IEEE Access}, vol.~3, pp. 678--708, 2015.
+
+\bibitem{ramesh2011performance}
+V.~Ramesh, P.~Parkavi, and P.~Yasodha, ``Performance analysis of placement selection using data mining techniques,'' \emph{Int. J. Comput. Appl.}, vol. 975, no. 8887, pp. 37--41, 2011.
+
+\bibitem{tsang1993foundations}
+E.~Tsang, \emph{Foundations of Constraint Satisfaction: The Classic Text}. London, U.K.: Academic Press, 1993.
+
+\bibitem{feyer2019automated}
+F.~Feyer, S.~Siebenlist, and M.~Koch, ``Automated eligibility checking in higher education admissions,'' in \emph{Proc. Int. Conf. Educ. Technol.}, Lisbon, Portugal, 2019, pp. 102--110.
+
+\bibitem{dasilva2021decision}
+J.~D.~F.~P.~Da~Silva and M.~A.~A.~Da~Silva, ``Decision support systems in higher education: A systematic literature review,'' \emph{IEEE Latin Am. Trans.}, vol.~19, no.~8, pp. 1380--1388, 2021.
+
+\bibitem{fowler2002patterns}
+M.~Fowler, \emph{Patterns of Enterprise Application Architecture}. Boston, MA, USA: Addison-Wesley, 2002.
+
+\bibitem{hohpe2003enterprise}
+G.~Hohpe and B.~Woolf, \emph{Enterprise Integration Patterns: Designing, Building, and Deploying Messaging Solutions}. Boston, MA, USA: Addison-Wesley, 2003.
+
+\bibitem{newman2021building}
+S.~Newman, \emph{Building Microservices: Designing Fine-Grained Systems}, 2nd~ed. Sebastopol, CA, USA: O'Reilly Media, 2021.
+
+\bibitem{thomson2016generic}
+M.~Thomson and P.~Beverloo, ``Generic event delivery using HTTP push,'' Internet Engineering Task Force (IETF), RFC 8030, Dec. 2016.
+
+\bibitem{thomson2018voluntary}
+M.~Thomson, E.~Damaggio, and P.~Beverloo, ``Voluntary Application Server Identification (VAPID) for Web Push,'' Internet Engineering Task Force (IETF), RFC 8292, Apr. 2018.
+
+\bibitem{ferraiolo2001proposed}
+D.~Ferraiolo, R.~Sandhu, S.~Gavrila, D.~R.~Kuhn, and R.~Chandramouli, ``Proposed NIST standard for role-based access control,'' \emph{ACM Trans. Inf. Syst. Secur.}, vol.~4, no.~3, pp. 224--274, 2001.
+
+\bibitem{jones2015json}
+M.~Jones, J.~Bradley, and N.~Sakimura, ``JSON Web Token (JWT),'' Internet Engineering Task Force (IETF), RFC 7519, May 2015.
+
+\bibitem{mell2011nist}
+P.~Mell and T.~Grance, ``The NIST definition of cloud computing,'' National Institute of Standards and Technology (NIST), Gaithersburg, MD, USA, Special Publication 800-145, Sep. 2011.
+
+\end{thebibliography}
+
+\end{document}

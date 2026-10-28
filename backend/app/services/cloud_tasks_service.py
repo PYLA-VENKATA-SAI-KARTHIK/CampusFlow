@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -70,7 +71,31 @@ class MockCloudTasksService:
         }
         self.enqueued_tasks.append(task_record)
         logger.debug("MockCloudTasksService enqueued task: %s", task_path)
+
+        # In development / mock mode, also process and persist notification records to DB
+        if os.getenv("APP_ENV") != "testing":
+            try:
+                await self._process_mock_task(payload)
+            except Exception as e:
+                logger.debug("MockCloudTasksService background processing note: %s", e)
+
         return task_path
+
+    async def _process_mock_task(self, payload_dict: dict[str, Any]) -> None:
+        try:
+            from app.db.session import get_session_factory
+            from app.repositories.notification_repository import NotificationRepository
+            from app.services.notification_worker import NotificationWorkerService
+            from app.schemas.notification import NotificationTaskPayload
+
+            payload = NotificationTaskPayload.model_validate(payload_dict)
+            factory = get_session_factory()
+            async with factory() as session:
+                repo = NotificationRepository(session=session)
+                worker = NotificationWorkerService(notification_repo=repo, session=session)
+                await worker.process_notification_task(payload)
+        except Exception as err:
+            logger.debug("Mock task execution error: %s", err)
 
     def get_tasks(self) -> list[dict[str, Any]]:
         """Return a copy of all enqueued tasks."""

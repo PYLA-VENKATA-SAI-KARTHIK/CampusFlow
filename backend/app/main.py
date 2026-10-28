@@ -89,6 +89,10 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, generic_exception_handler)
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+    @app.get("/health", tags=["System"])
+    async def root_health():
+        return {"status": "healthy", "service": "CampusFlow"}
+
     # Routers
     app.include_router(wellknown_router, prefix="/.well-known")
     app.include_router(api_v1_router, prefix="/api/v1")

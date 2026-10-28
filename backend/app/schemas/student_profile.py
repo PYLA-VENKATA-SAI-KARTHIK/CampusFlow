@@ -17,10 +17,10 @@ class StudentProfileBase(BaseModel):
     batch_year: int = Field(..., ge=1900, le=2100)
     cgpa: float = Field(..., ge=0.0, le=10.0)
     active_backlogs: int = Field(..., ge=0)
-    phone_number: str | None = Field(None, max_length=15)
-    personal_email: EmailStr | None = None
-    gender: str | None = Field(None, max_length=10)
-    section: str | None = Field(None, max_length=10)
+    phone_number: str | None = Field(None, max_length=50)
+    personal_email: str | None = Field(None, max_length=255)
+    gender: str | None = Field(None, max_length=20)
+    section: str | None = Field(None, max_length=20)
     tenth_mark: float | None = Field(None, ge=0.0, le=100.0)
     twelfth_mark: float | None = Field(None, ge=0.0, le=100.0)
     diploma_mark: float | None = Field(None, ge=0.0, le=100.0)
@@ -35,7 +35,7 @@ class StudentProfileBase(BaseModel):
             return None
         if isinstance(v, str):
             v = v.strip()
-            if not v:
+            if not v or v.lower() in ("nan", "none", "null", "n/a", "nil"):
                 return None
         return v
 
@@ -49,7 +49,7 @@ class StudentProfileBase(BaseModel):
             return None
         parsed = urlparse(v)
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            raise ValueError("Portfolio URL must be a valid HTTP or HTTPS URL.")
+            return None
         return v
 
 

@@ -23,6 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 os.environ["APP_ENV"] = "testing"
+os.environ["RATE_LIMIT_LOGIN"] = "10/minute"
+os.environ["RATE_LIMIT_ACTIVATE"] = "5/15minutes"
 
 # Resolve TEST_DATABASE_URL with fallback derivation
 raw_dev_url = os.getenv(

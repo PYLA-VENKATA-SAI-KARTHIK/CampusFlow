@@ -52,15 +52,28 @@ class DriveRegistrationWithStudentResponse(DriveRegistrationResponse):
 class CurrentStageSummary(BaseModel):
     stage_name: str
     stage_status: str
+    stage_sequence: int | None = None
     scheduled_at: datetime | None = None
+
+
+class ApplicationStageItem(BaseModel):
+    id: UUID
+    name: str
+    stage_type: str
+    sequence_order: int
+    scheduled_at: datetime | None = None
+    my_status: str | None = None
 
 
 class StudentApplicationResponse(BaseModel):
     registration_id: UUID
     drive_id: UUID
     drive_title: str
+    role_title: str | None = None
     company_name: str
     company_logo_url: str | None = None
     registered_at: datetime
     drive_status: str
+    status: str = "REGISTERED"
+    stages: list[ApplicationStageItem] = []
     my_current_stage: CurrentStageSummary | None = None
