@@ -113,15 +113,14 @@ async def seed_data():
             print("[OK] Created synthetic Admin user: admin@campusflow.edu")
 
         # Officer
-        officer_email = "dhilipanrajkumar@gmail.com"
-        res = await session.execute(select(User).where(User.email.in_([officer_email, "officer@campusflow.edu"])))
+        res = await session.execute(select(User).where(User.email == "officer@campusflow.edu"))
         officer = res.scalar_one_or_none()
         if not officer:
             officer = User(
                 id=uuid4(),
-                email=officer_email,
+                email="officer@campusflow.edu",
                 password_hash=hash_password("TestOfficer@123"),
-                full_name="Mr. Dhilipanrajkumar",
+                full_name="Placement Officer",
                 role="OFFICER",
                 is_active=True,
                 must_change_password=False,
@@ -129,11 +128,23 @@ async def seed_data():
             session.add(officer)
             await session.commit()
             await session.refresh(officer)
-            print(f"[OK] Created Officer user: {officer_email}")
-        else:
-            officer.full_name = "Mr. Dhilipanrajkumar"
-            officer.email = officer_email
+            print("[OK] Created Officer user: officer@campusflow.edu")
+
+        res_personal = await session.execute(select(User).where(User.email == "dhilipanrajkumar@gmail.com"))
+        officer_personal = res_personal.scalar_one_or_none()
+        if not officer_personal:
+            officer_personal = User(
+                id=uuid4(),
+                email="dhilipanrajkumar@gmail.com",
+                password_hash=hash_password("TestOfficer@123"),
+                full_name="Mr. Dhilipanrajkumar",
+                role="OFFICER",
+                is_active=True,
+                must_change_password=False,
+            )
+            session.add(officer_personal)
             await session.commit()
+            print("[OK] Created Officer user: dhilipanrajkumar@gmail.com")
 
         # Students
         students_spec = [

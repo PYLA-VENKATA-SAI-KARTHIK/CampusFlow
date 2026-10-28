@@ -69,8 +69,8 @@ jobs:
           HEADS=$(alembic heads)
           echo "$HEADS"
           
-          echo "$HEADS" | grep -q "0007_audit_logs_immutability (head)" || {
-            echo "Error: Expected head 0007_audit_logs_immutability not found"
+          echo "$HEADS" | grep -q "0011_practice_assessment_engine (head)" || {
+            echo "Error: Expected head 0011_practice_assessment_engine not found"
             exit 1
           }
           
@@ -79,7 +79,14 @@ jobs:
             echo "Error: Multiple Alembic heads detected ($HEAD_COUNT)"
             exit 1
           fi
-          echo "Alembic migrations verified: exactly 1 head (0007_audit_logs_immutability)"
+          echo "Alembic migrations verified: exactly 1 head (0011_practice_assessment_engine)"
+
+      - name: Setup CI Test Database & Seed Dev DB
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD=campusflow_dev psql -h localhost -U campusflow -d campusflow_dev -c "CREATE DATABASE campusflow_test;"
+          cd backend
+          python scripts/seed_test_env.py
 
       - name: Run Complete Backend Pytest Suite
         run: |
