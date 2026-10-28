@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     database_url: str
     database_echo: bool = False
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def assemble_db_connection(cls, v: str) -> str:
+        if isinstance(v, str) and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     # -------------------------------------------------------------------------
     # CORS
     # -------------------------------------------------------------------------
