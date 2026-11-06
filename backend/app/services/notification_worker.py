@@ -11,10 +11,17 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
+from app.core.email import DriveNotificationEmailData, EmailService, get_email_service
 from app.models.notification import Notification
+from app.models.placement_drive import PlacementDrive
+from app.models.student_profile import StudentProfile
+from app.models.user import User
 from app.repositories.drive_registration_repository import DriveRegistrationRepository
 from app.repositories.notification_repository import NotificationRepository
 from app.repositories.push_subscription_repository import PushSubscriptionRepository
@@ -27,7 +34,7 @@ DEADLINE_REMINDER_TYPES = {"DEADLINE_REMINDER_24H", "DEADLINE_REMINDER_6H", "DEA
 
 
 class NotificationWorkerService:
-    """Service handling asynchronous notification processing, in-app DB persistence, and Web Push delivery."""
+    """Service handling asynchronous notification processing, in-app DB persistence, Web Push, and Email delivery."""
 
     def __init__(
         self,
@@ -36,12 +43,14 @@ class NotificationWorkerService:
         registration_repo: DriveRegistrationRepository | None = None,
         push_repo: PushSubscriptionRepository | None = None,
         push_sender: PushSenderService | None = None,
+        email_service: EmailService | None = None,
     ) -> None:
         self.notification_repo = notification_repo
         self.session = session
         self.registration_repo = registration_repo or DriveRegistrationRepository(session=session)
         self.push_repo = push_repo or PushSubscriptionRepository(session=session)
         self.push_sender = push_sender or get_push_sender_service()
+        self.email_service = email_service or get_email_service()
 
     async def process_notification_task(
         self,
@@ -171,6 +180,67 @@ class NotificationWorkerService:
                         "Failed to process push notifications for notification %s: %s",
                         created_notification.id,
                         push_err,
+                    )
+
+            # 4. Deliver Email notification if requested (post-commit, failure isolated)
+            if (task.send_email or task.notification_type in ("DRIVE_PUBLISHED", "REGISTRATION_OPEN")) and self.email_service:
+                try:
+                    user_stmt = select(User).where(User.id == task.user_id)
+                    user = (await self.session.execute(user_stmt)).scalar_one_or_none()
+
+                    profile_stmt = select(StudentProfile).where(StudentProfile.user_id == task.user_id)
+                    profile = (await self.session.execute(profile_stmt)).scalar_one_or_none()
+
+                    recipient_email = None
+                    if profile and profile.personal_email and "@" in profile.personal_email:
+                        recipient_email = profile.personal_email.strip()
+                    elif user and user.email:
+                        recipient_email = user.email.strip()
+
+                    if recipient_email:
+                        drive_title = task.title
+                        company_name = "Campus Placement"
+                        job_role = ""
+                        ctc_lpa = None
+                        location = None
+                        deadline_str = None
+                        drive_url = f"{get_settings().frontend_base_url}/notifications"
+
+                        if task.reference_id and task.reference_type == "DRIVE":
+                            drive_stmt = (
+                                select(PlacementDrive)
+                                .options(selectinload(PlacementDrive.company))
+                                .where(PlacementDrive.id == task.reference_id)
+                            )
+                            drive = (await self.session.execute(drive_stmt)).scalar_one_or_none()
+                            if drive:
+                                drive_title = drive.title
+                                if drive.company:
+                                    company_name = drive.company.name
+                                job_role = drive.job_role or ""
+                                ctc_lpa = float(drive.ctc_lpa) if drive.ctc_lpa else None
+                                location = drive.location
+                                if drive.registration_deadline:
+                                    deadline_str = drive.registration_deadline.strftime("%d %b %Y, %I:%M %p UTC")
+                                drive_url = f"{get_settings().frontend_base_url}/drives/{drive.id}"
+
+                        email_data = DriveNotificationEmailData(
+                            recipient_email=recipient_email,
+                            recipient_name=user.full_name if user else f"Student {recipient_email}",
+                            drive_title=drive_title,
+                            company_name=company_name,
+                            job_role=job_role,
+                            ctc_lpa=ctc_lpa,
+                            location=location,
+                            registration_deadline=deadline_str,
+                            drive_url=drive_url,
+                        )
+                        await self.email_service.send_drive_notification_email(email_data)
+                except Exception as email_err:
+                    logger.error(
+                        "Failed to deliver drive notification email to user %s: %s",
+                        task.user_id,
+                        email_err,
                     )
 
             return NotificationTaskResponse(

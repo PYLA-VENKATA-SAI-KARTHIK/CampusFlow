@@ -71,6 +71,8 @@ class PreparationMaterialResponse(BaseModel):
     review_notes: str | None = None
     created_at: datetime
     updated_at: datetime
+    topic: PreparationTopicResponse | None = None
+    role: PreparationRoleResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -127,6 +129,8 @@ class RoleRoadmapTopicResponse(BaseModel):
     topic: PreparationTopicResponse
     importance: str
     material_count: int = 0
+    module: str = "Core Curriculum"
+    module_order: int = 1
 
 
 class RoleRoadmapResponse(BaseModel):

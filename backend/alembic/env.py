@@ -60,22 +60,26 @@ async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
     """
-    settings = get_settings()
-    
-    # Configure the engine dynamically from our settings
-    configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.database_url
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.engine.url import make_url
 
-    connectable = async_engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
+    settings = get_settings()
+
+    try:
+        url_obj = make_url(settings.database_url)
+        print(f"Connecting to database: {url_obj.host or 'localhost'}:{url_obj.port or 5432}/{url_obj.database} (driver={url_obj.drivername})")
+    except Exception as e:
+        print(f"Connecting with database URL: could not parse preview ({e})")
+
+    connectable = create_async_engine(
+        settings.database_url,
         poolclass=pool.NullPool,
         connect_args={"server_settings": {"search_path": "campusflow, public"}},
     )
 
     async with connectable.connect() as connection:
         from sqlalchemy import text
-        await connection.execute(text("CREATE SCHEMA IF NOT EXISTS campusflow AUTHORIZATION campusflow;"))
+        await connection.execute(text("CREATE SCHEMA IF NOT EXISTS campusflow;"))
         await connection.commit()
         await connection.run_sync(do_run_migrations)
 

@@ -360,6 +360,30 @@ export const PreparationHubPage: React.FC = () => {
     }
   };
 
+  const getRoleIcon = (code: string) => {
+    switch (code) {
+      case 'SYSTEM_DESIGN':
+        return '🏗️';
+      case 'SOFTWARE_DEVELOPER':
+        return '💻';
+      case 'AI_ML_ENGINEER':
+        return '🧠';
+      case 'GENAI_ENGINEER':
+        return '✨';
+      case 'DEVOPS_ENGINEER':
+        return '☁️';
+      case 'DATA_ENGINEER':
+      case 'DATA_ANALYST':
+        return '📊';
+      case 'FULLSTACK_DEVELOPER':
+        return '⚡';
+      case 'QA_TEST_ENGINEER':
+        return '🎯';
+      default:
+        return '🚀';
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* SaaS Page Header */}
@@ -513,6 +537,7 @@ export const PreparationHubPage: React.FC = () => {
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
+                  <span className="text-sm">{getRoleIcon(role.code)}</span>
                   <span>{role.name}</span>
                 </button>
               ))}

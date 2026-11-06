@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.dependencies import UserContext, get_current_user, get_db
-from app.core.email import EmailService, create_email_service
+from app.core.email import EmailService, get_email_service
 from app.core.exceptions import ActivationTokenInvalidError
 from app.core.limiter import limiter
 from app.schemas.auth import (
@@ -25,15 +25,6 @@ from app.services.auth_service import AuthService
 router = APIRouter()
 
 
-def get_email_service() -> EmailService:
-    """Dependency to inject the configured EmailService."""
-    settings = get_settings()
-    return create_email_service(
-        provider=settings.email_provider,
-        sendgrid_api_key=settings.sendgrid_api_key,
-        sendgrid_from_email=settings.sendgrid_from_email,
-        sendgrid_from_name=settings.sendgrid_from_name,
-    )
 
 
 def get_auth_service(

@@ -44,6 +44,7 @@ class NotificationDispatcher:
         reference_id: UUID | None = None,
         reference_type: str | None = None,
         send_push: bool = True,
+        send_email: bool = False,
     ) -> str:
         """
         Build and enqueue a single asynchronous notification task.
@@ -62,11 +63,12 @@ class NotificationDispatcher:
             reference_id=reference_id,
             reference_type=reference_type,
             send_push=send_push,
+            send_email=send_email,
             idempotency_key=idempotency_key,
         )
 
         task_dict = task_payload.model_dump(mode="json")
-        task_name = f"notif-{notification_type.lower()}-{user_id}"
+        task_name = f"notif-{notification_type.lower()}-{user_id}-{reference_id or 'all'}"
         
         task_id = await self.cloud_tasks.enqueue_notification_task(
             payload=task_dict,
@@ -117,6 +119,7 @@ class NotificationDispatcher:
                     reference_id=ref_id,
                     reference_type=item.get("reference_type"),
                     send_push=item.get("send_push", True),
+                    send_email=item.get("send_email", False),
                 )
             task_ids.append(task_id)
         return task_ids

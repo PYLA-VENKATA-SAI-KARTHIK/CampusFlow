@@ -61,12 +61,16 @@ export interface PreparationMaterial {
   review_notes: string | null;
   created_at: string;
   updated_at: string;
+  topic?: PreparationTopic;
+  role?: PreparationRole | null;
 }
 
 export interface RoleRoadmapTopic {
   topic: PreparationTopic;
   importance: TopicImportance;
   material_count: number;
+  module?: string;
+  module_order?: number;
 }
 
 export interface RoleRoadmap {

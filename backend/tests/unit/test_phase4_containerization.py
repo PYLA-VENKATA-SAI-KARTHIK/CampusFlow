@@ -18,6 +18,11 @@ BACKEND_DIR = ROOT_DIR / "backend"
 FRONTEND_DIR = ROOT_DIR / "frontend"
 
 
+@pytest.fixture(autouse=True)
+def setup_test_db():
+    yield
+
+
 def test_01_backend_dockerfile_structure():
     """Verify backend/Dockerfile follows best practices, non-root user, and healthcheck."""
     dockerfile_path = BACKEND_DIR / "Dockerfile"

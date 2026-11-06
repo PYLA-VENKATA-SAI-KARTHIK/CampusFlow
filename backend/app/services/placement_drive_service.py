@@ -9,8 +9,11 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 import logging
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.models.audit_log import AuditLog
-
+from app.models.user import User
+from app.models.student_profile import StudentProfile
 from app.models.eligibility_criteria import EligibilityCriteria
 from app.models.placement_drive import PlacementDrive
 from app.repositories.audit_log_repository import AuditLogRepository
@@ -33,7 +36,7 @@ from app.schemas.placement_drive import (
 logger = logging.getLogger(__name__)
 
 VALID_TRANSITIONS: dict[str, list[str]] = {
-    "DRAFT": ["PUBLISHED"],
+    "DRAFT": ["PUBLISHED", "REGISTRATION_OPEN"],
     "PUBLISHED": ["REGISTRATION_OPEN"],
     "REGISTRATION_OPEN": ["REGISTRATION_CLOSED"],
     "REGISTRATION_CLOSED": ["SHORTLISTING"],
@@ -288,29 +291,55 @@ class PlacementDriveService:
 
         await self.drive_repo.session.commit()
 
-        # Post-commit notification dispatch: DRAFT -> PUBLISHED
-        if current_status == "DRAFT" and new_status == "PUBLISHED" and self.dispatcher:
+        # Post-commit notification dispatch: whenever drive is PUBLISHED or REGISTRATION_OPEN
+        if (
+            new_status in ("PUBLISHED", "REGISTRATION_OPEN")
+            and current_status != new_status
+            and self.dispatcher
+        ):
             try:
-                active_profiles = await self.student_repo.list_all_active_profiles()
+                # Query all candidates with active accounts in the portal
+                stmt = (
+                    select(User)
+                    .options(
+                        selectinload(User.student_profile).selectinload(StudentProfile.branch)
+                    )
+                    .where(User.role == "STUDENT", User.is_active == True)
+                )
+                active_users = (await self.drive_repo.session.execute(stmt)).scalars().all()
+
                 criteria_dict = drive.eligibility_criteria.criteria if drive.eligibility_criteria else {}
                 company_name = drive.company.name if drive.company else "A company"
                 items = []
-                for profile in active_profiles:
-                    is_eligible, _ = EligibilityService.evaluate(profile, criteria_dict)
-                    if is_eligible:
-                        items.append({
-                            "user_id": profile.user_id,
-                            "title": f"New Placement Drive: {drive.title}",
-                            "body": f"{company_name} is hiring for {drive.job_role}. Check your eligibility and register before the deadline.",
-                            "notification_type": "DRIVE_PUBLISHED",
-                            "reference_id": drive.id,
-                            "reference_type": "DRIVE",
-                            "send_push": True,
-                        })
+                notif_type = "REGISTRATION_OPEN" if new_status == "REGISTRATION_OPEN" else "DRIVE_PUBLISHED"
+                notif_title = f"Registration Open: {drive.title}" if new_status == "REGISTRATION_OPEN" else f"New Placement Drive: {drive.title}"
+                notif_body = (
+                    f"{company_name} is hiring for {drive.job_role}. Registration is now open! Check your eligibility and register before the deadline."
+                    if new_status == "REGISTRATION_OPEN"
+                    else f"{company_name} is hiring for {drive.job_role}. Check your eligibility and register before the deadline."
+                )
+                for user in active_users:
+                    profile = user.student_profile
+                    # If criteria exists and student has a profile, evaluate eligibility
+                    if profile and criteria_dict:
+                        is_eligible, _ = EligibilityService.evaluate(profile, criteria_dict)
+                        if not is_eligible:
+                            continue
+
+                    items.append({
+                        "user_id": user.id,
+                        "title": notif_title,
+                        "body": notif_body,
+                        "notification_type": notif_type,
+                        "reference_id": drive.id,
+                        "reference_type": "DRIVE",
+                        "send_push": True,
+                        "send_email": True,
+                    })
                 if items:
                     await self.dispatcher.dispatch_bulk_notifications(items)
             except Exception as e:
-                logger.error("Failed to dispatch DRIVE_PUBLISHED notifications for drive %s: %s", drive.id, e)
+                logger.error("Failed to dispatch %s notifications for drive %s: %s", notif_type, drive.id, e)
 
         return await self.get_drive(drive.id)
 

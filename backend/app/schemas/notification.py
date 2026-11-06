@@ -33,6 +33,7 @@ class NotificationTaskPayload(BaseModel):
     reference_id: UUID | None = None
     reference_type: str | None = Field(None, max_length=50)
     send_push: bool = True
+    send_email: bool = False
     idempotency_key: str | None = None
 
     model_config = ConfigDict(extra="ignore")

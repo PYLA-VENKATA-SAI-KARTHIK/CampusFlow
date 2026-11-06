@@ -30,6 +30,10 @@ from app.models.assessment import (
     AssessmentResponse,
     AssessmentResult,
 )
+from app.models.mock_interview import (
+    MockInterviewSession,
+    MockInterviewEvaluation,
+)
 
 __all__ = [
     "AccountActivation",
@@ -57,6 +61,8 @@ __all__ = [
     "AssessmentAttempt",
     "AssessmentResponse",
     "AssessmentResult",
+    "MockInterviewSession",
+    "MockInterviewEvaluation",
 ]
 
 

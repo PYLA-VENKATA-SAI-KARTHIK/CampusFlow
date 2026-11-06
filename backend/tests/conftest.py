@@ -113,7 +113,7 @@ async def setup_test_db(db_engine) -> AsyncGenerator[None, None]:
     limiter.reset()
     # Create a fresh connection for schema setup.
     async with db_engine.begin() as connection:
-        await connection.execute(text("CREATE SCHEMA IF NOT EXISTS campusflow AUTHORIZATION campusflow;"))
+        await connection.execute(text("CREATE SCHEMA IF NOT EXISTS campusflow;"))
         await connection.run_sync(Base.metadata.drop_all)
         await connection.run_sync(Base.metadata.create_all)
 

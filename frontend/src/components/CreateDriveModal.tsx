@@ -287,7 +287,7 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const executeDriveCreation = async (publishImmediately: boolean) => {
+  const executeDriveCreation = async (targetStatus: 'DRAFT' | 'PUBLISHED' | 'REGISTRATION_OPEN') => {
     if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
       return;
     }
@@ -355,13 +355,15 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
         setCreatedStageIndexes(new Set(updatedIndexes));
       }
 
-      // 3. If publish requested, transition status from DRAFT -> PUBLISHED
+      // 3. If publish or open registration requested, transition status
       let finalDrive = driveToUse;
-      if (publishImmediately) {
+      if (targetStatus === 'REGISTRATION_OPEN') {
+        finalDrive = await driveService.updateDriveStatus(driveToUse.id, 'REGISTRATION_OPEN');
+      } else if (targetStatus === 'PUBLISHED') {
         finalDrive = await driveService.updateDriveStatus(driveToUse.id, 'PUBLISHED');
       }
 
-      onSuccess(finalDrive, publishImmediately);
+      onSuccess(finalDrive, targetStatus !== 'DRAFT');
       handleForceClose();
     } catch (err: any) {
       const apiMsg = err.response?.data?.detail || err.message || 'Failed to complete drive setup.';
@@ -1133,26 +1135,35 @@ export const CreateDriveModal: React.FC<CreateDriveModalProps> = ({
               <>
                 <button
                   type="button"
-                  onClick={() => executeDriveCreation(false)}
+                  onClick={() => executeDriveCreation('DRAFT')}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                  className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
                 >
                   {isSubmitting ? 'Saving...' : 'Save Draft'}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => executeDriveCreation(true)}
+                  onClick={() => executeDriveCreation('PUBLISHED')}
                   disabled={isSubmitting}
-                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center space-x-1.5"
+                  className="px-3.5 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition"
+                >
+                  Publish Only
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => executeDriveCreation('REGISTRATION_OPEN')}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center space-x-1.5"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Publishing...</span>
+                      <span>Opening Registration...</span>
                     </>
                   ) : (
-                    <span>Publish Drive Now</span>
+                    <span>🚀 Publish & Open Registration</span>
                   )}
                 </button>
               </>

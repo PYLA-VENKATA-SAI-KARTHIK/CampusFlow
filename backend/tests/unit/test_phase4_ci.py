@@ -20,6 +20,11 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 CI_WORKFLOW = ROOT_DIR / ".github" / "workflows" / "ci.yml"
 
 
+@pytest.fixture(autouse=True)
+def setup_test_db():
+    yield
+
+
 def test_01_ci_workflow_structure_and_permissions():
     """Verify ci.yml exists, parses, has least-privilege permissions, and proper triggers."""
     assert CI_WORKFLOW.exists(), ".github/workflows/ci.yml must exist"

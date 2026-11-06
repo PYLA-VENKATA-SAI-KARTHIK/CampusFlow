@@ -337,11 +337,13 @@ async def test_multi_round_qualified_list_upload_workflow(
     )
     assert r_student_stages.status_code == 200
     stages_data = r_student_stages.json()
-    assert len(stages_data) == 2  # Stage 1 and Stage 2 are published
+    assert len(stages_data) == 3  # All configured stages for drive progression are returned
     # Stage 1 has my_status = "SHORTLISTED"
     assert stages_data[0]["my_status"] == "SHORTLISTED"
     # Stage 2 has my_status = "SHORTLISTED"
     assert stages_data[1]["my_status"] == "SHORTLISTED"
+    # Stage 3 is upcoming
+    assert stages_data[2]["my_status"] is None
 
     # 8. Security / RBAC:
     # Student cannot upload or preview round qualified lists

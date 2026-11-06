@@ -23,6 +23,102 @@ from app.schemas.preparation import (
 )
 
 
+ROLE_TOPIC_MODULES: dict[str, dict[str, tuple[str, int]]] = {
+    "SYSTEM_DESIGN": {
+        "high-level-system-design": ("Module 1: High-Level Architecture & Microservices", 1),
+        "low-level-system-design": ("Module 1: High-Level Architecture & Microservices", 1),
+        "distributed-caching-sharding": ("Module 2: Scalability, Caching & Sharding", 2),
+        "cap-theorem-consistency": ("Module 2: Scalability, Caching & Sharding", 2),
+        "sql-dbms": ("Module 2: Scalability, Caching & Sharding", 2),
+        "message-queues-streaming": ("Module 3: Asynchronous Systems & Event Streaming", 3),
+        "concurrency-multithreading": ("Module 3: Asynchronous Systems & Event Streaming", 3),
+        "system-design-case-studies": ("Module 4: Real-World Case Studies & Mock Drills", 4),
+        "behavioral-hr": ("Module 4: Real-World Case Studies & Mock Drills", 4),
+    },
+    "SOFTWARE_DEVELOPER": {
+        "dsa": ("Module 1: Algorithms & Data Structures Core", 1),
+        "python-programming": ("Module 1: Algorithms & Data Structures Core", 1),
+        "python": ("Module 1: Algorithms & Data Structures Core", 1),
+        "java": ("Module 1: Algorithms & Data Structures Core", 1),
+        "operating-systems": ("Module 1: Computer Science & OS Fundamentals", 1),
+        "computer-networks": ("Module 1: Computer Science & OS Fundamentals", 1),
+        "sql-dbms": ("Module 2: Databases, Storage & Concurrency", 2),
+        "sql": ("Module 2: Databases, Storage & Concurrency", 2),
+        "dbms": ("Module 2: Databases, Storage & Concurrency", 2),
+        "oop": ("Module 2: Databases, Storage & Concurrency", 2),
+        "concurrency-multithreading": ("Module 2: Databases, Storage & Concurrency", 2),
+        "low-level-system-design": ("Module 2: Databases, Storage & Concurrency", 2),
+        "high-level-system-design": ("Module 3: Distributed Systems & Architecture", 3),
+        "distributed-caching-sharding": ("Module 3: Distributed Systems & Architecture", 3),
+        "quant-math": ("Module 4: Placement Drills & Behavioral", 4),
+        "quantitative-aptitude": ("Module 4: Placement Drills & Behavioral", 4),
+        "logical-reasoning": ("Module 4: Placement Drills & Behavioral", 4),
+        "behavioral-hr": ("Module 4: Placement Drills & Behavioral", 4),
+        "hr-behavioral": ("Module 4: Placement Drills & Behavioral", 4),
+        "technical-interview": ("Module 4: Placement Drills & Behavioral", 4),
+        "project-defense": ("Module 4: Placement Drills & Behavioral", 4),
+    },
+    "GENAI_ENGINEER": {
+        "python-programming": ("Module 1: Python & AI Foundations", 1),
+        "dsa": ("Module 1: Algorithms & Data Structures Core", 1),
+        "rag-architectures": ("Module 2: Vector Databases & RAG Pipelines", 2),
+        "high-level-system-design": ("Module 2: Vector Databases & RAG Pipelines", 2),
+        "message-queues-streaming": ("Module 3: Production LLM Pipelines & Agents", 3),
+        "distributed-caching-sharding": ("Module 3: Production LLM Pipelines & Agents", 3),
+        "behavioral-hr": ("Module 4: Project Defense & Behavioral", 4),
+    },
+    "DEVOPS_ENGINEER": {
+        "python-programming": ("Module 1: Linux & Systems Fundamentals", 1),
+        "concurrency-multithreading": ("Module 1: Linux & Systems Fundamentals", 1),
+        "docker-kubernetes": ("Module 2: Containers & Orchestration", 2),
+        "high-level-system-design": ("Module 2: Containers & Orchestration", 2),
+        "message-queues-streaming": ("Module 3: Infrastructure Scaling & Streaming", 3),
+        "distributed-caching-sharding": ("Module 3: Infrastructure Scaling & Streaming", 3),
+        "cap-theorem-consistency": ("Module 4: Reliability & Production Resilience", 4),
+        "behavioral-hr": ("Module 4: Reliability & Production Resilience", 4),
+    },
+    "DATA_ENGINEER": {
+        "sql-dbms": ("Module 1: SQL & Data Foundations", 1),
+        "python-programming": ("Module 1: SQL & Data Foundations", 1),
+        "quant-math": ("Module 1: SQL & Data Foundations", 1),
+        "spark-data-pipelines": ("Module 2: Distributed Data Processing", 2),
+        "distributed-caching-sharding": ("Module 2: Distributed Data Processing", 2),
+        "message-queues-streaming": ("Module 3: Real-Time Event Streaming", 3),
+        "high-level-system-design": ("Module 3: Real-Time Event Streaming", 3),
+        "system-design-case-studies": ("Module 4: Lakehouse Design & Mock Drills", 4),
+        "behavioral-hr": ("Module 4: Lakehouse Design & Mock Drills", 4),
+    },
+    "FULLSTACK_DEVELOPER": {
+        "web-development": ("Module 1: Frontend Architecture & React", 1),
+        "dsa": ("Module 1: Algorithms & Data Structures Core", 1),
+        "python-programming": ("Module 2: Backend APIs & Microservices", 2),
+        "sql-dbms": ("Module 2: Backend APIs & Microservices", 2),
+        "low-level-system-design": ("Module 3: Low-Level Design & Patterns", 3),
+        "distributed-caching-sharding": ("Module 3: Low-Level Design & Patterns", 3),
+        "behavioral-hr": ("Module 4: System Integration & STAR Drills", 4),
+    },
+    "AI_ML_ENGINEER": {
+        "python-programming": ("Module 1: Mathematical & Python Foundations", 1),
+        "quant-math": ("Module 1: Mathematical & Python Foundations", 1),
+        "dsa": ("Module 1: Mathematical & Python Foundations", 1),
+        "sql-dbms": ("Module 2: Data Modeling & SQL Feature Stores", 2),
+        "spark-data-pipelines": ("Module 2: Data Modeling & SQL Feature Stores", 2),
+        "rag-architectures": ("Module 3: Deep Learning & Neural Architectures", 3),
+        "high-level-system-design": ("Module 3: Deep Learning & Neural Architectures", 3),
+        "behavioral-hr": ("Module 4: ML System Design & Case Studies", 4),
+    },
+    "QA_TEST_ENGINEER": {
+        "python-programming": ("Module 1: Programming & Test Foundations", 1),
+        "dsa": ("Module 1: Programming & Test Foundations", 1),
+        "web-development": ("Module 2: Web APIs & End-to-End Testing", 2),
+        "sql-dbms": ("Module 2: Web APIs & End-to-End Testing", 2),
+        "docker-kubernetes": ("Module 3: CI/CD Test Automation Pipelines", 3),
+        "concurrency-multithreading": ("Module 3: CI/CD Test Automation Pipelines", 3),
+        "behavioral-hr": ("Module 4: Quality Strategy & STAR Defense", 4),
+    },
+}
+
+
 class PreparationService:
     def __init__(
         self,
@@ -70,16 +166,21 @@ class PreparationService:
             )
 
         topics_with_counts: list[RoleRoadmapTopicResponse] = []
+        role_map = ROLE_TOPIC_MODULES.get(role.code, {})
         for rt in role.role_topics:
             count = await self.prep_repo.count_materials_for_topic(rt.topic_id)
+            mod_info = role_map.get(rt.topic.slug, ("Module 1: Core Curriculum", 1))
             topics_with_counts.append(
                 RoleRoadmapTopicResponse(
                     topic=rt.topic,
                     importance=rt.importance,
                     material_count=count,
+                    module=mod_info[0],
+                    module_order=mod_info[1],
                 )
             )
 
+        topics_with_counts.sort(key=lambda t: (t.module_order, 0 if t.importance == "CORE" else 1))
         return RoleRoadmapResponse(role=role, topics=topics_with_counts)
 
     async def suggest_material(

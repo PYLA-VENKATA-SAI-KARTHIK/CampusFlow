@@ -120,8 +120,6 @@ class PlacementStageService:
 
         visible_stages = []
         for stage in stages:
-            if not stage.is_published:
-                continue
             assign = student_map.get(stage.id)
             if assign:
                 stage.my_status = assign.status

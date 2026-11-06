@@ -77,9 +77,10 @@ class PreparationRepository:
             )
 
         if role_id:
+            role_topic_subq = select(PreparationRoleTopic.topic_id).where(PreparationRoleTopic.role_id == role_id)
             stmt = stmt.where(
                 (PreparationMaterial.role_id == role_id)
-                | (PreparationMaterial.role_id.is_(None))
+                | (PreparationMaterial.topic_id.in_(role_topic_subq))
             )
 
         if difficulty:

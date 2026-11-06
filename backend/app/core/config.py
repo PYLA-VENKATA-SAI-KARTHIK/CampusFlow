@@ -39,9 +39,48 @@ class Settings(BaseSettings):
     @field_validator("database_url", mode="before")
     @classmethod
     def assemble_db_connection(cls, v: str) -> str:
-        if isinstance(v, str) and v.startswith("postgresql://"):
-            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
+        if not isinstance(v, str):
+            return v
+
+        url_str = v.strip()
+
+        # Strip surrounding quotes (double or single)
+        if (url_str.startswith('"') and url_str.endswith('"')) or (
+            url_str.startswith("'") and url_str.endswith("'")
+        ):
+            url_str = url_str[1:-1].strip()
+
+        # Handle accidental pasting of full assignment: DATABASE_URL=...
+        if url_str.startswith("DATABASE_URL="):
+            url_str = url_str[len("DATABASE_URL="):].strip()
+            if (url_str.startswith('"') and url_str.endswith('"')) or (
+                url_str.startswith("'") and url_str.endswith("'")
+            ):
+                url_str = url_str[1:-1].strip()
+
+        # Handle accidental copying of psql command: psql 'postgresql://...' or psql postgresql://...
+        if url_str.startswith("psql "):
+            url_str = url_str[5:].strip()
+            if (url_str.startswith('"') and url_str.endswith('"')) or (
+                url_str.startswith("'") and url_str.endswith("'")
+            ):
+                url_str = url_str[1:-1].strip()
+
+        # Normalize Postgres schemes to asyncpg
+        if url_str.startswith("postgres://"):
+            url_str = url_str.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url_str.startswith("postgresql://"):
+            url_str = url_str.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url_str.startswith("postgresql+psycopg2://"):
+            url_str = url_str.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+
+        # Replace sslmode parameter with asyncpg-compatible ssl parameter
+        if "sslmode=require" in url_str:
+            url_str = url_str.replace("sslmode=require", "ssl=require")
+        elif "sslmode=disable" in url_str:
+            url_str = url_str.replace("?sslmode=disable", "").replace("&sslmode=disable", "")
+
+        return url_str
 
     # -------------------------------------------------------------------------
     # CORS
@@ -75,10 +114,17 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Email
     # -------------------------------------------------------------------------
-    email_provider: Literal["mock", "sendgrid"] = "mock"
+    email_provider: Literal["mock", "sendgrid", "smtp"] = "mock"
     sendgrid_api_key: str = ""
     sendgrid_from_email: str = "noreply@campusflow.internal"
     sendgrid_from_name: str = "CampusFlow"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
+    smtp_from_email: str = "noreply@campusflow.internal"
+    smtp_from_name: str = "CampusFlow"
     frontend_base_url: str = "http://localhost:5173"
 
     # -------------------------------------------------------------------------
