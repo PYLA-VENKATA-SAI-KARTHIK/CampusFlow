@@ -39,14 +39,21 @@ from app.repositories.student_profile_repository import StudentProfileRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import RegisterResponse, TokenResponse
 from app.schemas.user import UserResponse
+from app.services.notification_dispatcher import NotificationDispatcher
 
 logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    def __init__(self, session: AsyncSession, email_service: EmailService) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        email_service: EmailService,
+        dispatcher: NotificationDispatcher | None = None,
+    ) -> None:
         self.session = session
         self.email_service = email_service
+        self.dispatcher = dispatcher
         self.user_repo = UserRepository(session)
         self.auth_repo = AuthRepository(session)
         self.settings = get_settings()
@@ -281,6 +288,47 @@ class AuthService:
             self.session.add(activation)
 
         await self.session.commit()
+
+        # Dispatch notifications & emails for any currently active REGISTRATION_OPEN drives
+        # for which the newly registered student is eligible.
+        if self.dispatcher:
+            try:
+                from app.repositories.placement_drive_repository import PlacementDriveRepository
+                from app.services.eligibility_service import EligibilityService
+
+                now = datetime.now(timezone.utc)
+                drive_repo = PlacementDriveRepository(self.session)
+                open_drives = await drive_repo.get_open_drives_with_deadline()
+
+                items = []
+                for drive in open_drives:
+                    # Only active drives whose deadline is in the future
+                    if drive.registration_deadline and drive.registration_deadline < now:
+                        continue
+
+                    criteria_dict = drive.eligibility_criteria.criteria if drive.eligibility_criteria else {}
+                    if criteria_dict:
+                        is_eligible, _ = EligibilityService.evaluate(profile, criteria_dict)
+                        if not is_eligible:
+                            continue
+
+                    company_name = drive.company.name if drive.company else "Campus Placement"
+                    job_role = drive.job_role or ""
+                    items.append({
+                        "user_id": user.id,
+                        "title": f"Registration Open: {drive.title}",
+                        "body": f"{company_name} is hiring for {job_role}. Registration is open! Check your eligibility and register before the deadline.",
+                        "notification_type": "REGISTRATION_OPEN",
+                        "reference_id": drive.id,
+                        "reference_type": "DRIVE",
+                        "send_push": True,
+                        "send_email": True,
+                    })
+
+                if items:
+                    await self.dispatcher.dispatch_bulk_notifications(items)
+            except Exception as notif_err:
+                logger.error("Failed to notify newly registered student %s of existing open drives: %s", user.id, notif_err)
 
         return RegisterResponse(
             message="Registration completed successfully. You can now sign in.",

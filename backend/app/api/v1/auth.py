@@ -21,6 +21,7 @@ from app.schemas.auth import (
     TokenResponse,
 )
 from app.services.auth_service import AuthService
+from app.services.notification_dispatcher import NotificationDispatcher, get_notification_dispatcher
 
 router = APIRouter()
 
@@ -30,8 +31,9 @@ router = APIRouter()
 def get_auth_service(
     session: Annotated[AsyncSession, Depends(get_db)],
     email_service: Annotated[EmailService, Depends(get_email_service)],
+    dispatcher: Annotated[NotificationDispatcher, Depends(get_notification_dispatcher)],
 ) -> AuthService:
-    return AuthService(session=session, email_service=email_service)
+    return AuthService(session=session, email_service=email_service, dispatcher=dispatcher)
 
 
 @router.post("/login", response_model=TokenResponse)
