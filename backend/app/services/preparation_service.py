@@ -200,8 +200,8 @@ class PreparationService:
         )
         created = await self.prep_repo.create_material(material)
         await self.prep_repo.session.commit()
-        await self.prep_repo.session.refresh(created)
-        return created
+        refreshed = await self.prep_repo.get_material_by_id(created.id)
+        return refreshed if refreshed is not None else created
 
     async def get_student_suggestions(
         self, user_id: UUID, page: int = 1, page_size: int = 20
@@ -249,8 +249,8 @@ class PreparationService:
         )
         self.audit_repo.add(audit_entry)
         await self.prep_repo.session.commit()
-        await self.prep_repo.session.refresh(material)
-        return material
+        refreshed = await self.prep_repo.get_material_by_id(material.id)
+        return refreshed if refreshed is not None else material
 
     async def create_material_as_officer(
         self, creator_user_id: UUID, data: OfficerCreateMaterialRequest
@@ -280,8 +280,8 @@ class PreparationService:
         )
         self.audit_repo.add(audit_entry)
         await self.prep_repo.session.commit()
-        await self.prep_repo.session.refresh(created)
-        return created
+        refreshed = await self.prep_repo.get_material_by_id(created.id)
+        return refreshed if refreshed is not None else created
 
     async def delete_material_as_officer(
         self, material_id: UUID, user_id: UUID

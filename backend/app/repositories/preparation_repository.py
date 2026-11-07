@@ -124,8 +124,8 @@ class PreparationRepository:
     async def create_material(self, material: PreparationMaterial) -> PreparationMaterial:
         self.session.add(material)
         await self.session.flush()
-        await self.session.refresh(material)
-        return material
+        fetched = await self.get_material_by_id(material.id)
+        return fetched if fetched is not None else material
 
     async def delete_material(self, material: PreparationMaterial) -> None:
         await self.session.delete(material)

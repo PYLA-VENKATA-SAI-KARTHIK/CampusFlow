@@ -65,7 +65,7 @@ jobs:
           echo "Applying migrations to CI PostgreSQL database..."
           alembic upgrade head
           
-          echo "Verifying migration heads..."
+          echo "Verifying migration heads (including 0007_audit_logs_immutability up to 0014)..."
           HEADS=$(alembic heads)
           echo "$HEADS"
           
