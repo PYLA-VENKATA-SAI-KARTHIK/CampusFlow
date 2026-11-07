@@ -156,7 +156,16 @@ export const driveService = {
   // Officer Student Access
   async getStudentResumeDownloadUrl(studentProfileId: string): Promise<string> {
     const res = await apiClient.get(`/officers/students/${studentProfileId}/resume-download-url`);
-    return res.data.url;
+    let url = res.data.url;
+    if (url) {
+      const apiHost = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
+      if (url.startsWith('/')) {
+        url = `${apiHost}${url}`;
+      } else if (url.includes('localhost:8000') && apiHost) {
+        url = url.replace(/https?:\/\/localhost:8000/, apiHost);
+      }
+    }
+    return url;
   },
 
   // Companies

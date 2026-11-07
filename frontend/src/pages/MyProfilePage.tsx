@@ -310,9 +310,11 @@ export const MyProfilePage: React.FC = () => {
       const { upload_url, object_path } = urlRes.data;
 
       let targetUrl = upload_url;
+      const apiHost = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
       if (targetUrl.startsWith('/')) {
-        const baseURL = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
-        targetUrl = `${baseURL}${targetUrl}`;
+        targetUrl = `${apiHost}${targetUrl}`;
+      } else if (targetUrl.includes('localhost:8000') && apiHost) {
+        targetUrl = targetUrl.replace(/https?:\/\/localhost:8000/, apiHost);
       }
 
       await axios.put(targetUrl, selectedFile, {
@@ -353,9 +355,11 @@ export const MyProfilePage: React.FC = () => {
       const res = await apiClient.get('/students/me/resume-download-url');
       if (res.data.url) {
         let downloadUrl = res.data.url;
+        const apiHost = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
         if (downloadUrl.startsWith('/')) {
-          const baseURL = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
-          downloadUrl = `${baseURL}${downloadUrl}`;
+          downloadUrl = `${apiHost}${downloadUrl}`;
+        } else if (downloadUrl.includes('localhost:8000') && apiHost) {
+          downloadUrl = downloadUrl.replace(/https?:\/\/localhost:8000/, apiHost);
         }
         window.open(downloadUrl, '_blank', 'noopener,noreferrer');
       }

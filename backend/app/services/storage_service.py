@@ -18,7 +18,14 @@ logger = logging.getLogger(__name__)
 
 # Shared in-memory metadata store across MockStorageService instances
 _GLOBAL_MOCK_OBJECTS: dict[str, dict] = {}
-_DEFAULT_STORAGE_DIR = Path(__file__).resolve().parent.parent.parent / ".local_storage"
+_DEFAULT_STORAGE_DIR = Path(
+    os.getenv("STORAGE_DIR")
+    or (
+        "/tmp/campusflow_storage"
+        if os.name != "nt"
+        else str(Path(__file__).resolve().parent.parent.parent / ".local_storage")
+    )
+)
 
 
 class StorageService(Protocol):
@@ -76,38 +83,51 @@ class MockStorageService:
         expires_in_seconds: int,
     ) -> str:
         clean_path = object_path.lstrip("/")
-        return f"{self.base_url}/api/v1/storage/upload/{clean_path}?sig=mockPUT"
+        if self.base_url and not any(h in self.base_url for h in ("localhost", "127.0.0.1")):
+            return f"{self.base_url}/api/v1/storage/upload/{clean_path}?sig=mockPUT"
+        return f"/api/v1/storage/upload/{clean_path}?sig=mockPUT"
 
     async def generate_download_url(
         self, object_path: str, expires_in_seconds: int
     ) -> str:
         clean_path = object_path.lstrip("/")
-        return f"{self.base_url}/api/v1/storage/download/{clean_path}?sig=mockGET"
+        if self.base_url and not any(h in self.base_url for h in ("localhost", "127.0.0.1")):
+            return f"{self.base_url}/api/v1/storage/download/{clean_path}?sig=mockGET"
+        return f"/api/v1/storage/download/{clean_path}?sig=mockGET"
 
     async def save_object(
         self, object_path: str, content: bytes, content_type: str = "application/pdf"
     ) -> dict:
         clean_path = object_path.lstrip("/")
-        file_path = self.storage_dir / clean_path
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_bytes(content)
-
-        meta = {"size": len(content), "content_type": content_type}
+        meta = {"size": len(content), "content_type": content_type, "content": content}
         self.mock_objects[clean_path] = meta
         _GLOBAL_MOCK_OBJECTS[clean_path] = meta
+
+        try:
+            file_path = self.storage_dir / clean_path
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_bytes(content)
+        except Exception as e:
+            logger.warning("Could not persist file to disk %s: %s (in-memory copy retained)", clean_path, e)
+
         return meta
 
     async def get_object(self, object_path: str) -> tuple[bytes, str] | None:
         clean_path = object_path.lstrip("/")
-        file_path = self.storage_dir / clean_path
-        if file_path.is_file():
-            meta = self.mock_objects.get(clean_path, {})
-            content_type = meta.get("content_type", "application/pdf")
-            return file_path.read_bytes(), content_type
+        try:
+            file_path = self.storage_dir / clean_path
+            if file_path.is_file():
+                meta = self.mock_objects.get(clean_path, {})
+                content_type = meta.get("content_type", "application/pdf")
+                return file_path.read_bytes(), content_type
+        except Exception:
+            pass
 
-        # Fallback to in-memory content if stored during mock tests
+        # Fallback to in-memory content if stored during mock tests or in ephemeral containers
         if clean_path in self.mock_objects and "content" in self.mock_objects[clean_path]:
             return self.mock_objects[clean_path]["content"], self.mock_objects[clean_path].get("content_type", "application/pdf")
+        if clean_path in _GLOBAL_MOCK_OBJECTS and "content" in _GLOBAL_MOCK_OBJECTS[clean_path]:
+            return _GLOBAL_MOCK_OBJECTS[clean_path]["content"], _GLOBAL_MOCK_OBJECTS[clean_path].get("content_type", "application/pdf")
 
         return None
 
@@ -120,15 +140,18 @@ class MockStorageService:
             return _GLOBAL_MOCK_OBJECTS[clean_path]
 
         # Check local filesystem
-        file_path = self.storage_dir / clean_path
-        if file_path.is_file():
-            meta = {
-                "size": file_path.stat().st_size,
-                "content_type": "application/pdf",
-            }
-            self.mock_objects[clean_path] = meta
-            _GLOBAL_MOCK_OBJECTS[clean_path] = meta
-            return meta
+        try:
+            file_path = self.storage_dir / clean_path
+            if file_path.is_file():
+                meta = {
+                    "size": file_path.stat().st_size,
+                    "content_type": "application/pdf",
+                }
+                self.mock_objects[clean_path] = meta
+                _GLOBAL_MOCK_OBJECTS[clean_path] = meta
+                return meta
+        except Exception:
+            pass
 
         return None
 

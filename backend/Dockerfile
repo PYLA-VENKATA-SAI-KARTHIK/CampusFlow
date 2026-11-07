@@ -41,6 +41,10 @@ RUN groupadd -g 10001 campusflow && \
 
 WORKDIR /app
 
+# Ensure storage directories exist and are owned by campusflow
+RUN mkdir -p /app/.local_storage /tmp/campusflow_storage && \
+    chown -R campusflow:campusflow /app /tmp/campusflow_storage
+
 # Copy isolated virtual environment from builder stage
 COPY --from=builder --chown=campusflow:campusflow /opt/venv /opt/venv
 
