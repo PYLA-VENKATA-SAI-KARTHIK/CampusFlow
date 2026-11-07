@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +17,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export const LoginPage = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'student' | 'officer' | 'admin'>('student');
   const { setSession } = useAuthStore();
   const navigate = useNavigate();
@@ -25,10 +25,21 @@ export const LoginPage = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
+
+  // Always reset fields to blank when navigating to login page or after logout
+  useEffect(() => {
+    reset({ email: '', password: '' });
+    setServerError(null);
+  }, [reset]);
 
   const onSubmit = async (data: LoginFormValues) => {
     let authSuccess = false;
@@ -177,6 +188,7 @@ export const LoginPage = () => {
                 onClick={() => {
                   setSelectedRole('student');
                   setServerError(null);
+                  reset({ email: '', password: '' });
                 }}
                 className={`p-2.5 text-center rounded-sm border transition cursor-pointer flex flex-col items-center justify-center ${
                   selectedRole === 'student'
@@ -193,6 +205,7 @@ export const LoginPage = () => {
                 onClick={() => {
                   setSelectedRole('officer');
                   setServerError(null);
+                  reset({ email: '', password: '' });
                 }}
                 className={`p-2.5 text-center rounded-sm border transition cursor-pointer flex flex-col items-center justify-center ${
                   selectedRole === 'officer'
@@ -209,6 +222,7 @@ export const LoginPage = () => {
                 onClick={() => {
                   setSelectedRole('admin');
                   setServerError(null);
+                  reset({ email: '', password: '' });
                 }}
                 className={`p-2.5 text-center rounded-sm border transition cursor-pointer flex flex-col items-center justify-center ${
                   selectedRole === 'admin'
@@ -223,7 +237,7 @@ export const LoginPage = () => {
           </div>
 
           {/* Form */}
-          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="off">
             {/* Registration No. / Email */}
             <div>
               <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-700 mb-1.5">
@@ -234,7 +248,7 @@ export const LoginPage = () => {
               <input
                 type="text"
                 inputMode="text"
-                autoComplete="username"
+                autoComplete="off"
                 data-testid="input-identifier"
                 placeholder={
                   selectedRole === 'student'
@@ -261,7 +275,7 @@ export const LoginPage = () => {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   placeholder="Enter your password"
                   {...register('password')}
                   className="block w-full px-3.5 py-2.5 bg-[#f5f6f9] border border-slate-300 focus:border-[#9b86d9] focus:bg-white rounded-sm text-xs sm:text-sm placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#9b86d9]/30 transition pr-10 shadow-xs"

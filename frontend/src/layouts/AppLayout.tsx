@@ -67,7 +67,10 @@ export const AppLayout: React.FC = () => {
       // Ignore errors on logout
     } finally {
       clearSession();
-      navigate('/login');
+      try {
+        sessionStorage.clear();
+      } catch {}
+      navigate('/login', { replace: true });
     }
   };
 
