@@ -92,7 +92,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["System"])
     async def root_health():
-        return {"status": "healthy", "service": "CampusFlow"}
+        return {"status": "healthy", "service": "CampusFlow", "version": "1.0.14"}
 
     # Routers
     app.include_router(wellknown_router, prefix="/.well-known")

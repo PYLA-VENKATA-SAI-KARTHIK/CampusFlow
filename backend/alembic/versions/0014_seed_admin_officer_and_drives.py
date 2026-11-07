@@ -81,7 +81,7 @@ def upgrade() -> None:
                         is_active = true,
                         must_change_password = false,
                         updated_at = now()
-                    WHERE id = :id
+                    WHERE id = CAST(:id AS uuid)
                 """),
                 {
                     "id": uid,
@@ -95,7 +95,7 @@ def upgrade() -> None:
             bind.execute(
                 sa.text("""
                     INSERT INTO users (id, email, password_hash, role, full_name, is_active, must_change_password, created_at, updated_at)
-                    VALUES (:id, :email, :pwd_hash, :role, :full_name, true, false, now(), now())
+                    VALUES (CAST(:id AS uuid), :email, :pwd_hash, :role, :full_name, true, false, now(), now())
                 """),
                 {
                     "id": uid,
@@ -118,7 +118,7 @@ def upgrade() -> None:
         bind.execute(
             sa.text("""
                 INSERT INTO student_profiles (id, user_id, roll_number, branch_code, batch_year, cgpa, active_backlogs, created_at, updated_at)
-                VALUES (:id, :user_id, 'DEMO2026001', 'CSE', 2027, 8.80, 0, now(), now())
+                VALUES (CAST(:id AS uuid), CAST(:user_id AS uuid), 'DEMO2026001', 'CSE', 2027, 8.80, 0, now(), now())
                 ON CONFLICT (roll_number) DO UPDATE SET
                     user_id = EXCLUDED.user_id,
                     cgpa = EXCLUDED.cgpa,
@@ -163,7 +163,7 @@ def upgrade() -> None:
             bind.execute(
                 sa.text("""
                     INSERT INTO companies (id, name, website, industry, description, created_by_user_id, created_at, updated_at)
-                    VALUES (:id, :name, :website, :industry, :description, :creator_id, now(), now())
+                    VALUES (CAST(:id AS uuid), :name, :website, :industry, :description, CAST(:creator_id AS uuid), now(), now())
                 """),
                 {
                     "id": cid,
@@ -261,8 +261,8 @@ def upgrade() -> None:
                         id, company_id, title, job_role, description, ctc_lpa, location,
                         registration_deadline, status, created_by_user_id, published_at, created_at, updated_at
                     ) VALUES (
-                        :id, :comp_id, :title, :job_role, :desc, :ctc, :loc,
-                        :deadline, :status, :creator_id, :pub_at, now(), now()
+                        CAST(:id AS uuid), CAST(:comp_id AS uuid), :title, :job_role, :desc, :ctc, :loc,
+                        :deadline, :status, CAST(:creator_id AS uuid), :pub_at, now(), now()
                     )
                 """),
                 {
@@ -280,11 +280,11 @@ def upgrade() -> None:
                 }
             )
 
-            # Insert eligibility criteria
+            # Insert eligibility criteria with explicit CAST to jsonb
             bind.execute(
                 sa.text("""
                     INSERT INTO eligibility_criteria (id, drive_id, criteria, created_at, updated_at)
-                    VALUES (:id, :drive_id, :criteria, now(), now())
+                    VALUES (CAST(:id AS uuid), CAST(:drive_id AS uuid), CAST(:criteria AS jsonb), now(), now())
                     ON CONFLICT (drive_id) DO UPDATE SET
                         criteria = EXCLUDED.criteria,
                         updated_at = now();
