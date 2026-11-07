@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class BranchBase(BaseModel):
-    code: str = Field(..., max_length=20, pattern=r"^[A-Z0-9_]+$")
+    code: str = Field(..., max_length=50, pattern=r"^[A-Za-z0-9_ \-\(\)]+$")
     name: str = Field(..., max_length=100)
 
 
