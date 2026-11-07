@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kare-placements.onrender.com/sitemap.xml
