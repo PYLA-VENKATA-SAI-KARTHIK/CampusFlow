@@ -268,6 +268,137 @@ class SendGridAdapter(EmailService):
 
 
 # ---------------------------------------------------------------------------
+# Resend adapter — HTTPS REST API (Port 443, Render free tier compatible)
+# ---------------------------------------------------------------------------
+
+
+class ResendAdapter(EmailService):
+    """
+    Modern HTTPS REST API email adapter using Resend (https://resend.com).
+    Operates over port 443 (HTTPS), completely bypassing SMTP port blocks on cloud hosts like Render.
+    """
+
+    def __init__(self, api_key: str, from_email: str, from_name: str) -> None:
+        self.api_key = api_key
+        self.from_email = from_email
+        self.from_name = from_name
+
+    def _send_sync(self, to_email: str, subject: str, text_content: str, html_content: str) -> None:
+        import urllib.request
+        import json
+
+        url = "https://api.resend.com/emails"
+        from_hdr = f"{self.from_name} <{self.from_email}>" if "<" not in self.from_email else self.from_email
+        payload = {
+            "from": from_hdr,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content,
+            "text": text_content,
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "CampusFlow/1.0",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                logger.info("Email delivered via Resend to %s | status=%s", to_email, resp.status)
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode("utf-8")
+            logger.error("Resend API error (%s): %s", he.code, err_body)
+            raise RuntimeError(f"Resend HTTP {he.code}: {err_body}") from he
+
+    async def send_activation_email(self, data: ActivationEmailData) -> None:
+        subject = "Activate your CampusFlow Account"
+        text = _build_activation_text(data)
+        html = _build_activation_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+
+    async def send_drive_notification_email(self, data: DriveNotificationEmailData) -> None:
+        subject = f"[{data.company_name}] {data.drive_title} — Placement Announcement"
+        text = _build_drive_notification_text(data)
+        html = _build_drive_notification_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+
+    async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
+        subject = f"[{data.company_name}] {data.broadcast_title}"
+        text = _build_manual_broadcast_text(data)
+        html = _build_manual_broadcast_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+
+
+# ---------------------------------------------------------------------------
+# Brevo adapter — HTTPS REST API (Port 443, Render free tier compatible)
+# ---------------------------------------------------------------------------
+
+
+class BrevoAdapter(EmailService):
+    """
+    Transactional HTTPS REST API email adapter using Brevo (formerly Sendinblue).
+    Operates over port 443 (HTTPS), completely bypassing SMTP port blocks on cloud hosts like Render.
+    """
+
+    def __init__(self, api_key: str, from_email: str, from_name: str) -> None:
+        self.api_key = api_key
+        self.from_email = from_email
+        self.from_name = from_name
+
+    def _send_sync(self, to_email: str, subject: str, text_content: str, html_content: str) -> None:
+        import urllib.request
+        import json
+
+        url = "https://api.brevo.com/v3/smtp/email"
+        payload = {
+            "sender": {"name": self.from_name, "email": self.from_email},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "htmlContent": html_content,
+            "textContent": text_content,
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "api-key": self.api_key,
+                "Content-Type": "application/json",
+                "User-Agent": "CampusFlow/1.0",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                logger.info("Email delivered via Brevo to %s | status=%s", to_email, resp.status)
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode("utf-8")
+            logger.error("Brevo API error (%s): %s", he.code, err_body)
+            raise RuntimeError(f"Brevo HTTP {he.code}: {err_body}") from he
+
+    async def send_activation_email(self, data: ActivationEmailData) -> None:
+        subject = "Activate your CampusFlow Account"
+        text = _build_activation_text(data)
+        html = _build_activation_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+
+    async def send_drive_notification_email(self, data: DriveNotificationEmailData) -> None:
+        subject = f"[{data.company_name}] {data.drive_title} — Placement Announcement"
+        text = _build_drive_notification_text(data)
+        html = _build_drive_notification_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+
+    async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
+        subject = f"[{data.company_name}] {data.broadcast_title}"
+        text = _build_manual_broadcast_text(data)
+        html = _build_manual_broadcast_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+
+
+# ---------------------------------------------------------------------------
 # SMTP adapter — standard library SMTP (Gmail, Outlook, University SMTP)
 # ---------------------------------------------------------------------------
 
@@ -581,6 +712,12 @@ def create_email_service(
     sendgrid_api_key: str = "",
     sendgrid_from_email: str = "noreply@campusflow.internal",
     sendgrid_from_name: str = "CampusFlow",
+    resend_api_key: str = "",
+    resend_from_email: str = "onboarding@resend.dev",
+    resend_from_name: str = "CampusFlow Placements",
+    brevo_api_key: str = "",
+    brevo_from_email: str = "noreply@campusflow.internal",
+    brevo_from_name: str = "CampusFlow Placements",
     smtp_host: str = "",
     smtp_port: int = 587,
     smtp_user: str = "",
@@ -593,6 +730,26 @@ def create_email_service(
     Create the appropriate EmailService implementation based on the provider.
     Called once at application startup.
     """
+    if provider == "resend":
+        if not resend_api_key:
+            raise ValueError("RESEND_API_KEY must be set when EMAIL_PROVIDER=resend")
+        logger.info("Email service: Resend HTTPS adapter initialized")
+        return ResendAdapter(
+            api_key=resend_api_key,
+            from_email=resend_from_email,
+            from_name=resend_from_name,
+        )
+
+    if provider == "brevo":
+        if not brevo_api_key:
+            raise ValueError("BREVO_API_KEY must be set when EMAIL_PROVIDER=brevo")
+        logger.info("Email service: Brevo HTTPS adapter initialized")
+        return BrevoAdapter(
+            api_key=brevo_api_key,
+            from_email=brevo_from_email,
+            from_name=brevo_from_name,
+        )
+
     if provider == "sendgrid":
         if not sendgrid_api_key:
             raise ValueError("SENDGRID_API_KEY must be set when EMAIL_PROVIDER=sendgrid")
@@ -632,6 +789,12 @@ def get_email_service() -> EmailService:
             sendgrid_api_key=settings.sendgrid_api_key,
             sendgrid_from_email=settings.sendgrid_from_email,
             sendgrid_from_name=settings.sendgrid_from_name,
+            resend_api_key=settings.resend_api_key,
+            resend_from_email=settings.resend_from_email,
+            resend_from_name=settings.resend_from_name,
+            brevo_api_key=settings.brevo_api_key,
+            brevo_from_email=settings.brevo_from_email,
+            brevo_from_name=settings.brevo_from_name,
             smtp_host=settings.smtp_host,
             smtp_port=settings.smtp_port,
             smtp_user=settings.smtp_user,

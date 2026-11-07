@@ -114,10 +114,16 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Email
     # -------------------------------------------------------------------------
-    email_provider: Literal["mock", "sendgrid", "smtp"] = "smtp"
+    email_provider: Literal["mock", "sendgrid", "smtp", "resend", "brevo"] = "smtp"
     sendgrid_api_key: str = ""
     sendgrid_from_email: str = "noreply@campusflow.internal"
     sendgrid_from_name: str = "CampusFlow"
+    resend_api_key: str = ""
+    resend_from_email: str = "onboarding@resend.dev"
+    resend_from_name: str = "CampusFlow Placements"
+    brevo_api_key: str = ""
+    brevo_from_email: str = "pylasai43@gmail.com"
+    brevo_from_name: str = "CampusFlow Placements"
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = "pylasai43@gmail.com"
