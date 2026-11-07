@@ -197,3 +197,4 @@ async def seed_klu_students():
 
 if __name__ == "__main__":
     asyncio.run(seed_klu_students())
+

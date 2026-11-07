@@ -59,7 +59,19 @@ class AuthService:
         Raises AccountNotActiveError if user is not active.
         """
         clean_identifier = email.strip()
-        user = await self.user_repo.get_by_email(clean_identifier)
+        norm_id = clean_identifier.lower()
+        if norm_id in ("admin", "administrator"):
+            lookup_id = "admin@campusflow.edu"
+        elif norm_id in ("officer", "placement"):
+            lookup_id = "officer@campusflow.edu"
+        elif norm_id == "student1":
+            lookup_id = "student1@campusflow.edu"
+        else:
+            lookup_id = clean_identifier
+
+        user = await self.user_repo.get_by_email(lookup_id)
+        if not user and lookup_id != clean_identifier:
+            user = await self.user_repo.get_by_email(clean_identifier)
         if not user:
             student_repo = StudentProfileRepository(self.session)
             profile = await student_repo.get_by_roll_number(clean_identifier)
