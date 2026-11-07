@@ -48,6 +48,7 @@ COPY --from=builder --chown=campusflow:campusflow /opt/venv /opt/venv
 COPY --chown=campusflow:campusflow alembic /app/alembic
 COPY --chown=campusflow:campusflow alembic.ini /app/alembic.ini
 COPY --chown=campusflow:campusflow app /app/app
+COPY --chown=campusflow:campusflow data /app/data
 COPY --chown=campusflow:campusflow scripts /app/scripts
 COPY --chown=campusflow:campusflow entrypoint.sh /app/entrypoint.sh
 

@@ -56,6 +56,20 @@ class StudentProfileRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_personal_email(self, personal_email: str) -> StudentProfile | None:
+        """Find a student profile by personal email address (case-insensitive, trimmed)."""
+        clean = personal_email.strip().lower()
+        stmt = (
+            select(StudentProfile)
+            .options(
+                selectinload(StudentProfile.user),
+                selectinload(StudentProfile.branch),
+            )
+            .where(func.lower(StudentProfile.personal_email) == clean)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
 
     async def list_students(
         self, 

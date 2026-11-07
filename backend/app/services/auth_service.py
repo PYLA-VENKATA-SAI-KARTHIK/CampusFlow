@@ -63,6 +63,8 @@ class AuthService:
         if not user:
             student_repo = StudentProfileRepository(self.session)
             profile = await student_repo.get_by_roll_number(clean_identifier)
+            if not profile and "@" in clean_identifier:
+                profile = await student_repo.get_by_personal_email(clean_identifier)
             if profile and profile.user:
                 user = profile.user
 
@@ -224,6 +226,8 @@ class AuthService:
         student_repo = StudentProfileRepository(self.session)
         clean_reg_no = registration_number.strip()
         profile = await student_repo.get_by_roll_number(clean_reg_no)
+        if not profile and "@" in clean_reg_no:
+            profile = await student_repo.get_by_personal_email(clean_reg_no)
 
         if not profile:
             raise StudentNotFoundError(
@@ -249,7 +253,8 @@ class AuthService:
             )
 
         # Hash the password securely and assign university email
-        university_email = f"{clean_reg_no}@klu.ac.in"
+        real_reg = profile.roll_number.strip()
+        university_email = f"{real_reg.lower()}@klu.ac.in"
         user.email = university_email
         user.password_hash = hash_password(password)
         user.is_active = True

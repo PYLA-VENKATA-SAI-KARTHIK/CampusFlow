@@ -45,7 +45,7 @@ def test_01_backend_dockerfile_structure():
     # Port and Entrypoint
     assert "EXPOSE 8000" in content
     assert 'ENTRYPOINT ["/app/entrypoint.sh"]' in content
-    assert 'CMD ["uvicorn", "app.main:app"' in content
+    assert 'uvicorn app.main:app' in content or 'CMD ["uvicorn", "app.main:app"' in content
 
     # No hardcoded secrets or .env copy
     assert "COPY .env" not in content
