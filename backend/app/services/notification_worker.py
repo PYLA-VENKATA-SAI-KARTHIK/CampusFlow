@@ -80,25 +80,26 @@ class NotificationWorkerService:
                     reason="already_registered",
                 )
 
-        # 1. Pre-check: Look up existing notification by deduplication key
-        existing = await self.notification_repo.get_by_dedup(
-            user_id=task.user_id,
-            notification_type=task.notification_type,
-            reference_id=task.reference_id,
-        )
+        # 1. Pre-check: Look up existing notification by deduplication key (skip dedup for MANUAL_BROADCAST)
+        if task.notification_type != "MANUAL_BROADCAST":
+            existing = await self.notification_repo.get_by_dedup(
+                user_id=task.user_id,
+                notification_type=task.notification_type,
+                reference_id=task.reference_id,
+            )
 
-        if existing:
-            logger.info(
-                "Skipping duplicate notification task for user %s (type=%s, ref=%s)",
-                task.user_id,
-                task.notification_type,
-                task.reference_id,
-            )
-            return NotificationTaskResponse(
-                status="skipped",
-                notification_id=existing.id,
-                reason="idempotent_duplicate",
-            )
+            if existing:
+                logger.info(
+                    "Skipping duplicate notification task for user %s (type=%s, ref=%s)",
+                    task.user_id,
+                    task.notification_type,
+                    task.reference_id,
+                )
+                return NotificationTaskResponse(
+                    status="skipped",
+                    notification_id=existing.id,
+                    reason="idempotent_duplicate",
+                )
 
         # 2. Create the in-app notification database record (safe under race conditions)
         notification = Notification(

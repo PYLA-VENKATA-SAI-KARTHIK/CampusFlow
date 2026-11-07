@@ -33,6 +33,9 @@ class NotificationDispatcher:
     ) -> str:
         """Construct a stable, deterministic idempotency key for the notification."""
         ref_str = str(reference_id) if reference_id else "none"
+        if notification_type == "MANUAL_BROADCAST":
+            import time
+            return f"{notification_type}:{ref_str}:{user_id}:{int(time.time() * 1000)}"
         return f"{notification_type}:{ref_str}:{user_id}"
 
     async def dispatch_notification(
@@ -68,7 +71,11 @@ class NotificationDispatcher:
         )
 
         task_dict = task_payload.model_dump(mode="json")
-        task_name = f"notif-{notification_type.lower()}-{user_id}-{reference_id or 'all'}"
+        if notification_type == "MANUAL_BROADCAST":
+            import time
+            task_name = f"notif-broadcast-{user_id}-{reference_id or 'all'}-{int(time.time() * 1000)}"
+        else:
+            task_name = f"notif-{notification_type.lower()}-{user_id}-{reference_id or 'all'}"
         
         task_id = await self.cloud_tasks.enqueue_notification_task(
             payload=task_dict,

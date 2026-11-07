@@ -329,7 +329,7 @@ class SmtpEmailAdapter(EmailService):
         clean_password = self.password.replace(" ", "").strip() if ("gmail.com" in self.host.lower() and self.password) else self.password
 
         if self.use_tls:
-            with smtplib.SMTP(self.host, self.port) as server:
+            with smtplib.SMTP(self.host, self.port, timeout=15) as server:
                 server.ehlo()
                 server.starttls()
                 server.ehlo()
@@ -337,7 +337,7 @@ class SmtpEmailAdapter(EmailService):
                     server.login(self.user, clean_password)
                 server.send_message(msg)
         else:
-            with smtplib.SMTP(self.host, self.port) as server:
+            with smtplib.SMTP(self.host, self.port, timeout=15) as server:
                 if self.user and clean_password:
                     server.login(self.user, clean_password)
                 server.send_message(msg)

@@ -196,7 +196,7 @@ export const PlacementDrivesPage: React.FC = () => {
 
     if (statusFilter === 'ALL') return true;
     if (statusFilter === 'APPLIED') return appliedDriveIds.has(drive.id);
-    if (statusFilter === 'OPEN') return drive.status === 'REGISTRATION_OPEN' || drive.status === 'PUBLISHED';
+    if (statusFilter === 'OPEN') return drive.status === 'REGISTRATION_OPEN';
     if (statusFilter === 'DRAFT') return drive.status === 'DRAFT';
     if (statusFilter === 'PUBLISHED') return drive.status === 'PUBLISHED';
     if (statusFilter === 'CLOSED') return drive.status === 'REGISTRATION_CLOSED' || drive.status === 'COMPLETED';
@@ -308,7 +308,7 @@ export const PlacementDrivesPage: React.FC = () => {
                 : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
             }`}
           >
-            Open for Registration
+            Registration Open ({drives.filter((d) => d.status === 'REGISTRATION_OPEN').length})
           </button>
 
           {isStudent && (

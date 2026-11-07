@@ -278,7 +278,7 @@ class PlacementDriveService:
         old_state = {"status": current_status}
         
         drive.status = new_status
-        if new_status == "PUBLISHED" and not drive.published_at:
+        if new_status in ("PUBLISHED", "REGISTRATION_OPEN") and not drive.published_at:
             drive.published_at = datetime.now(timezone.utc)
 
         self._log_audit(
