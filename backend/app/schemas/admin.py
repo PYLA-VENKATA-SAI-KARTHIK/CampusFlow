@@ -55,13 +55,13 @@ class AdminUserResponse(BaseModel):
 
     id: UUID
     email: str
-    full_name: str
+    full_name: str | None = None
     role: str
     is_active: bool
     must_change_password: bool
     last_login_at: datetime | None = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

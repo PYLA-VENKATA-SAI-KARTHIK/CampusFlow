@@ -114,18 +114,18 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Email
     # -------------------------------------------------------------------------
-    email_provider: Literal["mock", "sendgrid", "smtp"] = "mock"
+    email_provider: Literal["mock", "sendgrid", "smtp"] = "smtp"
     sendgrid_api_key: str = ""
     sendgrid_from_email: str = "noreply@campusflow.internal"
     sendgrid_from_name: str = "CampusFlow"
-    smtp_host: str = ""
+    smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
+    smtp_user: str = "pylasai43@gmail.com"
+    smtp_password: str = "mwqo glwl lpzn rvuj"
     smtp_use_tls: bool = True
-    smtp_from_email: str = "noreply@campusflow.internal"
-    smtp_from_name: str = "CampusFlow"
-    frontend_base_url: str = "http://localhost:5173"
+    smtp_from_email: str = "pylasai43@gmail.com"
+    smtp_from_name: str = "CampusFlow Placements"
+    frontend_base_url: str = "https://kare-placements.onrender.com"
 
     # -------------------------------------------------------------------------
     # Rate limiting

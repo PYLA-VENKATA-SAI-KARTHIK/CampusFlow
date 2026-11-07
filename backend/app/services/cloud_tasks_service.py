@@ -95,7 +95,7 @@ class MockCloudTasksService:
                 worker = NotificationWorkerService(notification_repo=repo, session=session)
                 await worker.process_notification_task(payload)
         except Exception as err:
-            logger.debug("Mock task execution error: %s", err)
+            logger.error("Mock task execution error: %s", err, exc_info=True)
 
     def get_tasks(self) -> list[dict[str, Any]]:
         """Return a copy of all enqueued tasks."""

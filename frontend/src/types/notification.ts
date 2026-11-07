@@ -26,6 +26,7 @@ export interface ManualBroadcastRequest {
   audience: BroadcastAudience;
   title: string;
   body: string;
+  send_email?: boolean;
 }
 
 export interface ManualBroadcastResponse {

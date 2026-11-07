@@ -224,18 +224,31 @@ class NotificationWorkerService:
                                     deadline_str = drive.registration_deadline.strftime("%d %b %Y, %I:%M %p UTC")
                                 drive_url = f"{get_settings().frontend_base_url}/drives/{drive.id}"
 
-                        email_data = DriveNotificationEmailData(
-                            recipient_email=recipient_email,
-                            recipient_name=user.full_name if user else f"Student {recipient_email}",
-                            drive_title=drive_title,
-                            company_name=company_name,
-                            job_role=job_role,
-                            ctc_lpa=ctc_lpa,
-                            location=location,
-                            registration_deadline=deadline_str,
-                            drive_url=drive_url,
-                        )
-                        await self.email_service.send_drive_notification_email(email_data)
+                        if task.notification_type == "MANUAL_BROADCAST":
+                            from app.core.email import ManualBroadcastEmailData
+                            broadcast_email_data = ManualBroadcastEmailData(
+                                recipient_email=recipient_email,
+                                recipient_name=user.full_name if user else f"Student {recipient_email}",
+                                broadcast_title=task.title,
+                                broadcast_body=task.body,
+                                drive_title=drive_title,
+                                company_name=company_name,
+                                drive_url=drive_url,
+                            )
+                            await self.email_service.send_manual_broadcast_email(broadcast_email_data)
+                        else:
+                            email_data = DriveNotificationEmailData(
+                                recipient_email=recipient_email,
+                                recipient_name=user.full_name if user else f"Student {recipient_email}",
+                                drive_title=drive_title,
+                                company_name=company_name,
+                                job_role=job_role,
+                                ctc_lpa=ctc_lpa,
+                                location=location,
+                                registration_deadline=deadline_str,
+                                drive_url=drive_url,
+                            )
+                            await self.email_service.send_drive_notification_email(email_data)
                 except Exception as email_err:
                     logger.error(
                         "Failed to deliver drive notification email to user %s: %s",

@@ -398,3 +398,67 @@ async def test_drive_registration_open_enqueues_email_notifications(
         assert p["send_email"] is True
         assert "Registration Open" in p["title"]
 
+
+@pytest.mark.asyncio
+async def test_manual_broadcast_with_send_email_enqueues_email_tasks(
+    async_client: AsyncClient,
+    drive_email_setup: dict,
+):
+    """When an officer sends a manual broadcast with send_email=True, tasks are enqueued with send_email=True."""
+    mock_tasks: MockCloudTasksService = drive_email_setup["mock_tasks"]
+    mock_tasks.clear()
+
+    # 1. Create a drive
+    drive_payload = {
+        "company_id": str(drive_email_setup["company"].id),
+        "title": "Broadcast Test Drive 2026",
+        "job_role": "Backend Engineer",
+        "ctc_lpa": 12.0,
+        "location": "Chennai",
+        "registration_deadline": "2026-12-31T23:59:59Z",
+        "eligibility_criteria": {
+            "min_cgpa": 7.0,
+            "max_active_backlogs": 0,
+            "eligible_branches": ["CSE_EMAIL"],
+        },
+    }
+    create_resp = await async_client.post(
+        "/api/v1/drives",
+        json=drive_payload,
+        headers=drive_email_setup["officer_headers"],
+    )
+    assert create_resp.status_code == 201
+    drive_id = create_resp.json()["id"]
+
+    # 2. Publish drive so it has eligible candidates
+    pub_resp = await async_client.post(
+        f"/api/v1/drives/{drive_id}/status",
+        json={"status": "PUBLISHED"},
+        headers=drive_email_setup["officer_headers"],
+    )
+    assert pub_resp.status_code == 200
+    mock_tasks.clear()
+
+    # 3. Send manual broadcast with send_email=True
+    broadcast_payload = {
+        "audience": "ELIGIBLE",
+        "title": "Important PPT Rescheduled",
+        "body": "The pre-placement talk is moved to 4 PM in Auditorium 2.",
+        "send_email": True,
+    }
+    notify_resp = await async_client.post(
+        f"/api/v1/drives/{drive_id}/notify",
+        json=broadcast_payload,
+        headers=drive_email_setup["officer_headers"],
+    )
+    assert notify_resp.status_code == 202
+    assert notify_resp.json()["recipient_count"] == 2
+
+    tasks = mock_tasks.get_tasks()
+    assert len(tasks) == 2
+    for t in tasks:
+        p = t["payload"]
+        assert p["notification_type"] == "MANUAL_BROADCAST"
+        assert p["send_email"] is True
+        assert p["title"] == "Important PPT Rescheduled"
+

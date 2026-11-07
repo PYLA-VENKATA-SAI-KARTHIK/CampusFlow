@@ -49,6 +49,19 @@ class DriveNotificationEmailData:
     drive_url: str = ""
 
 
+@dataclass(frozen=True)
+class ManualBroadcastEmailData:
+    """All data needed to send a manual placement announcement email."""
+
+    recipient_email: str
+    recipient_name: str
+    broadcast_title: str
+    broadcast_body: str
+    drive_title: str
+    company_name: str
+    drive_url: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Abstract interface
 # ---------------------------------------------------------------------------
@@ -71,6 +84,11 @@ class EmailService(ABC):
         """Send a drive announcement email to an eligible student."""
         ...
 
+    @abstractmethod
+    async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
+        """Send a manual broadcast announcement email to a targeted student."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Mock adapter — for local development and tests
@@ -87,6 +105,7 @@ class MockEmailAdapter(EmailService):
     def __init__(self) -> None:
         self.sent_activation_emails: list[ActivationEmailData] = []
         self.sent_drive_emails: list[DriveNotificationEmailData] = []
+        self.sent_broadcast_emails: list[ManualBroadcastEmailData] = []
 
     async def send_activation_email(self, data: ActivationEmailData) -> None:
         self.sent_activation_emails.append(data)
@@ -119,6 +138,25 @@ class MockEmailAdapter(EmailService):
             f"  Drive: {data.drive_title} ({data.company_name})\n"
             f"  Role: {data.job_role} | CTC: {ctc_info}\n"
             f"  Deadline: {data.registration_deadline or 'N/A'}\n"
+            f"  Link: {data.drive_url}\n"
+            f"{'='*60}\n"
+        )
+
+    async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
+        self.sent_broadcast_emails.append(data)
+        logger.info(
+            "[MOCK EMAIL] Broadcast email would be sent to: %s (%s) for drive '%s'",
+            data.recipient_email,
+            data.recipient_name,
+            data.drive_title,
+        )
+        print(
+            f"\n{'='*60}\n"
+            f"  [DEV] Manual Placement Broadcast Email\n"
+            f"  To: {data.recipient_email} ({data.recipient_name})\n"
+            f"  Drive: {data.drive_title} ({data.company_name})\n"
+            f"  Title: {data.broadcast_title}\n"
+            f"  Message: {data.broadcast_body}\n"
             f"  Link: {data.drive_url}\n"
             f"{'='*60}\n"
         )
@@ -194,6 +232,35 @@ class SendGridAdapter(EmailService):
         except Exception as exc:
             logger.error(
                 "Failed to send drive notification email to %s via SendGrid: %s",
+                data.recipient_email,
+                type(exc).__name__,
+            )
+            raise
+
+    async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
+        try:
+            from sendgrid import SendGridAPIClient
+            from sendgrid.helpers.mail import Mail, To
+
+            message = Mail(
+                from_email=(self._from_email, self._from_name),
+                to_emails=To(data.recipient_email, data.recipient_name),
+                subject=f"[{data.company_name}] {data.broadcast_title}",
+                html_content=_build_manual_broadcast_html(data),
+                plain_text_content=_build_manual_broadcast_text(data),
+            )
+
+            sg = SendGridAPIClient(self._api_key)
+            response = sg.send(message)
+
+            logger.info(
+                "Manual broadcast email sent via SendGrid to %s | status=%s",
+                data.recipient_email,
+                response.status_code,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to send manual broadcast email to %s via SendGrid: %s",
                 data.recipient_email,
                 type(exc).__name__,
             )
@@ -287,7 +354,7 @@ class SmtpEmailAdapter(EmailService):
             raise
 
     async def send_drive_notification_email(self, data: DriveNotificationEmailData) -> None:
-        subject = f"New Placement Drive: {data.drive_title} ({data.company_name})"
+        subject = f"[{data.company_name}] {data.drive_title} — Placement Announcement"
         text = _build_drive_notification_text(data)
         html = _build_drive_notification_html(data)
         try:
@@ -295,6 +362,17 @@ class SmtpEmailAdapter(EmailService):
             logger.info("Drive notification email sent via SMTP to %s", data.recipient_email)
         except Exception as exc:
             logger.error("Failed to send drive notification email to %s via SMTP: %s", data.recipient_email, exc)
+            raise
+
+    async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
+        subject = f"[{data.company_name}] {data.broadcast_title}"
+        text = _build_manual_broadcast_text(data)
+        html = _build_manual_broadcast_html(data)
+        try:
+            await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+            logger.info("Manual broadcast email sent via SMTP to %s", data.recipient_email)
+        except Exception as exc:
+            logger.error("Failed to send manual broadcast email to %s via SMTP: %s", data.recipient_email, exc)
             raise
 
 
@@ -424,6 +502,69 @@ def _build_drive_notification_text(data: DriveNotificationEmailData) -> str:
         f"View Drive and Register here:\n"
         f"{data.drive_url}\n\n"
         f"Please ensure you complete your registration before the deadline.\n"
+        f"— CampusFlow Placement Cell"
+    )
+
+
+def _build_manual_broadcast_html(data: ManualBroadcastEmailData) -> str:
+    escaped_body = data.broadcast_body.replace("\n", "<br>")
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; margin: 0; padding: 20px; background-color: #f8fafc; }}
+        .card {{ background: #ffffff; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
+        .header {{ background: #6366f1; color: #ffffff; padding: 24px; text-align: center; }}
+        .header h1 {{ margin: 0; font-size: 20px; font-weight: 700; }}
+        .header p {{ margin: 6px 0 0 0; font-size: 13px; opacity: 0.9; }}
+        .content {{ padding: 24px; }}
+        .message-box {{ background: #f1f5f9; border-left: 4px solid #6366f1; padding: 16px; border-radius: 6px; margin: 20px 0; font-size: 14px; color: #334155; }}
+        .btn {{ display: inline-block; background: #6366f1; color: #ffffff !important; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; }}
+        .footer {{ padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }}
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <h1>{data.broadcast_title}</h1>
+          <p>{data.company_name} &bull; {data.drive_title}</p>
+        </div>
+        <div class="content">
+          <p>Hello <strong>{data.recipient_name}</strong>,</p>
+          <p>An official placement announcement has been broadcast regarding <strong>{data.drive_title}</strong> ({data.company_name}):</p>
+          
+          <div class="message-box">
+            {escaped_body}
+          </div>
+
+          <div style="text-align: center; margin: 28px 0 16px 0;">
+            <a href="{data.drive_url}" class="btn">View Placement Drive Details</a>
+          </div>
+
+          <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
+            If the button above does not work, copy and paste this link into your browser:<br>
+            <a href="{data.drive_url}" style="color: #6366f1; word-break: break-all;">{data.drive_url}</a>
+          </p>
+        </div>
+        <div class="footer">
+          CampusFlow Placement Management System &bull; Placement Cell Announcement
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+
+def _build_manual_broadcast_text(data: ManualBroadcastEmailData) -> str:
+    return (
+        f"Hello {data.recipient_name},\n\n"
+        f"An official placement announcement has been broadcast for {data.drive_title} ({data.company_name}):\n\n"
+        f"Title: {data.broadcast_title}\n\n"
+        f"{data.broadcast_body}\n\n"
+        f"View details on the placement portal:\n"
+        f"{data.drive_url}\n\n"
         f"— CampusFlow Placement Cell"
     )
 

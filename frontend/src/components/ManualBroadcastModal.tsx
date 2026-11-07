@@ -20,6 +20,7 @@ export const ManualBroadcastModal: React.FC<ManualBroadcastModalProps> = ({
   const [audience, setAudience] = useState<BroadcastAudience>('ELIGIBLE');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [sendEmail, setSendEmail] = useState(true);
   const [step, setStep] = useState<'form' | 'confirm' | 'success'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -31,6 +32,7 @@ export const ManualBroadcastModal: React.FC<ManualBroadcastModalProps> = ({
     setAudience('ELIGIBLE');
     setTitle('');
     setBody('');
+    setSendEmail(true);
     setStep('form');
     setIsSubmitting(false);
     setErrorMessage(null);
@@ -73,6 +75,7 @@ export const ManualBroadcastModal: React.FC<ManualBroadcastModalProps> = ({
       audience,
       title: title.trim(),
       body: body.trim(),
+      send_email: sendEmail,
     };
 
     try {
@@ -217,6 +220,28 @@ export const ManualBroadcastModal: React.FC<ManualBroadcastModalProps> = ({
               />
             </div>
 
+            {/* Email delivery toggle */}
+            <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 flex items-start space-x-3">
+              <input
+                id="broadcast-send-email"
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+              <label htmlFor="broadcast-send-email" className="text-xs text-slate-700 cursor-pointer select-none">
+                <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Also deliver via Email to students' inboxes
+                </span>
+                <span className="text-slate-500 text-[11px] block mt-0.5">
+                  Sends this announcement directly to each student's institutional & personal email address.
+                </span>
+              </label>
+            </div>
+
             <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
@@ -241,8 +266,11 @@ export const ManualBroadcastModal: React.FC<ManualBroadcastModalProps> = ({
             <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 text-xs space-y-1">
               <p className="font-bold">Confirm Notification Broadcast</p>
               <p className="text-amber-700">
-                You are about to enqueue an in-app and web push notification to all{' '}
-                <span className="font-bold underline">{audience}</span> candidates.
+                You are about to enqueue notifications to all{' '}
+                <span className="font-bold underline">{audience}</span> candidates via{' '}
+                <span className="font-semibold text-slate-900">
+                  {sendEmail ? 'In-App Alerts, Web Push, and Direct Email' : 'In-App Alerts and Web Push'}
+                </span>.
               </p>
             </div>
 
@@ -250,6 +278,12 @@ export const ManualBroadcastModal: React.FC<ManualBroadcastModalProps> = ({
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Audience</span>
                 <p className="font-bold text-slate-900 mt-0.5">{audience}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Channels</span>
+                <p className="font-bold text-indigo-700 mt-0.5">
+                  {sendEmail ? '🔔 In-App Alert + 📱 Web Push + ✉️ Direct Email' : '🔔 In-App Alert + 📱 Web Push'}
+                </p>
               </div>
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Title</span>

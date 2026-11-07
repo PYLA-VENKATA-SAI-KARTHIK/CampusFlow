@@ -289,6 +289,12 @@ class PlacementDriveService:
             new_state={"status": new_status}
         )
 
+        # Eagerly capture relations before commit to avoid async greenlet expiration
+        criteria_dict = drive.eligibility_criteria.criteria if drive.eligibility_criteria else {}
+        company_name = drive.company.name if drive.company else "Campus Placement"
+        drive_title = drive.title
+        job_role = drive.job_role or ""
+
         await self.drive_repo.session.commit()
 
         # Post-commit notification dispatch: whenever drive is PUBLISHED or REGISTRATION_OPEN
@@ -298,25 +304,23 @@ class PlacementDriveService:
             and self.dispatcher
         ):
             try:
-                # Query all candidates with active accounts in the portal
+                # Query all candidate users with student profiles in the portal
                 stmt = (
                     select(User)
                     .options(
                         selectinload(User.student_profile).selectinload(StudentProfile.branch)
                     )
-                    .where(User.role == "STUDENT", User.is_active == True)
+                    .where(User.role == "STUDENT")
                 )
                 active_users = (await self.drive_repo.session.execute(stmt)).scalars().all()
 
-                criteria_dict = drive.eligibility_criteria.criteria if drive.eligibility_criteria else {}
-                company_name = drive.company.name if drive.company else "A company"
                 items = []
                 notif_type = "REGISTRATION_OPEN" if new_status == "REGISTRATION_OPEN" else "DRIVE_PUBLISHED"
-                notif_title = f"Registration Open: {drive.title}" if new_status == "REGISTRATION_OPEN" else f"New Placement Drive: {drive.title}"
+                notif_title = f"Registration Open: {drive_title}" if new_status == "REGISTRATION_OPEN" else f"New Placement Drive: {drive_title}"
                 notif_body = (
-                    f"{company_name} is hiring for {drive.job_role}. Registration is now open! Check your eligibility and register before the deadline."
+                    f"{company_name} is hiring for {job_role}. Registration is now open! Check your eligibility and register before the deadline."
                     if new_status == "REGISTRATION_OPEN"
-                    else f"{company_name} is hiring for {drive.job_role}. Check your eligibility and register before the deadline."
+                    else f"{company_name} is hiring for {job_role}. Check your eligibility and register before the deadline."
                 )
                 for user in active_users:
                     profile = user.student_profile
@@ -443,6 +447,7 @@ class PlacementDriveService:
                     "reference_id": drive.id,
                     "reference_type": "DRIVE",
                     "send_push": True,
+                    "send_email": data.send_email,
                 }
                 for uid in recipient_user_ids
             ]

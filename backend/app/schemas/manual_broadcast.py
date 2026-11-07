@@ -25,6 +25,10 @@ class ManualBroadcastRequest(BaseModel):
         max_length=2000,
         description="Notification body/message content",
     )
+    send_email: bool = Field(
+        default=False,
+        description="Whether to also deliver this announcement via email",
+    )
 
     model_config = ConfigDict(extra="ignore")
 
