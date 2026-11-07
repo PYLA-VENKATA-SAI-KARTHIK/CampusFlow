@@ -1,6 +1,7 @@
 """
 Health check and diagnostic endpoints.
 """
+import socket
 import traceback
 from fastapi import APIRouter, Query
 
@@ -11,10 +12,7 @@ router = APIRouter()
 
 @router.get("")
 async def health_check() -> dict[str, str]:
-    """
-    Basic health check endpoint.
-    Must not expose DB credentials or internal state.
-    """
+    """Basic health check endpoint."""
     return {"status": "ok"}
 
 
@@ -43,37 +41,28 @@ async def smtp_diagnostic(
         "smtp_use_tls": settings.smtp_use_tls,
     }
 
-    if not pw:
-        info["error"] = "SMTP_PASSWORD is empty or unset in environment variables."
-        return info
+    # Test raw socket connections to port 587, 465, 2525, 443 (IPv4 only vs default)
+    ports_to_test = [
+        ("smtp.gmail.com", 587),
+        ("smtp.gmail.com", 465),
+        ("smtp.gmail.com", 25),
+        ("smtp-relay.gmail.com", 587),
+        ("smtp.sendgrid.net", 587),
+        ("smtp.sendgrid.net", 2525),
+        ("api.resend.com", 443),
+    ]
+    port_results = {}
+    for host, p in ports_to_test:
+        key = f"{host}:{p}"
+        try:
+            # Force IPv4
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(3)
+            s.connect((host, p))
+            s.close()
+            port_results[key] = "OPEN / REACHABLE"
+        except Exception as e:
+            port_results[key] = f"BLOCKED: {type(e).__name__} - {e}"
 
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-
-    try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
-            info["tcp_connect"] = "SUCCESS"
-            server.ehlo()
-            if settings.smtp_use_tls:
-                server.starttls()
-                server.ehlo()
-                info["tls_handshake"] = "SUCCESS"
-
-            if settings.smtp_user and clean_pw:
-                server.login(settings.smtp_user, clean_pw)
-                info["smtp_login"] = "SUCCESS"
-
-            if send_test and target_email:
-                msg = MIMEMultipart("alternative")
-                msg["Subject"] = "[CampusFlow Diagnostic] SMTP Live Test"
-                msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
-                msg["To"] = target_email
-                msg.attach(MIMEText("This is an automated SMTP connectivity test from CampusFlow on Render.", "plain", "utf-8"))
-                server.send_message(msg)
-                info["test_email_sent"] = f"Delivered to {target_email}"
-    except Exception as e:
-        info["error"] = f"{type(e).__name__}: {str(e)}"
-        info["traceback"] = traceback.format_exc()
-
+    info["port_connectivity"] = port_results
     return info
