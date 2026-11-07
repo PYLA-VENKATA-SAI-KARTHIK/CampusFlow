@@ -283,8 +283,9 @@ class ResendAdapter(EmailService):
         self.from_email = from_email
         self.from_name = from_name
 
-    def _send_sync(self, to_email: str, subject: str, text_content: str, html_content: str) -> None:
+    def _send_sync(self, to_email: str, to_name: str, subject: str, text_content: str, html_content: str) -> None:
         import urllib.request
+        import urllib.error
         import json
 
         url = "https://api.resend.com/emails"
@@ -308,29 +309,33 @@ class ResendAdapter(EmailService):
         )
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
-                logger.info("Email delivered via Resend to %s | status=%s", to_email, resp.status)
+                resp_body = resp.read().decode("utf-8")
+                logger.info("Resend: email delivered to %s | status=%s | response=%s", to_email, resp.status, resp_body)
         except urllib.error.HTTPError as he:
             err_body = he.read().decode("utf-8")
-            logger.error("Resend API error (%s): %s", he.code, err_body)
+            logger.error("Resend API error sending to %s: HTTP %s — %s", to_email, he.code, err_body)
             raise RuntimeError(f"Resend HTTP {he.code}: {err_body}") from he
+        except Exception as exc:
+            logger.error("Resend unexpected error sending to %s: %s", to_email, exc)
+            raise
 
     async def send_activation_email(self, data: ActivationEmailData) -> None:
         subject = "Activate your CampusFlow Account"
         text = _build_activation_text(data)
         html = _build_activation_html(data)
-        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
 
     async def send_drive_notification_email(self, data: DriveNotificationEmailData) -> None:
         subject = f"[{data.company_name}] {data.drive_title} — Placement Announcement"
         text = _build_drive_notification_text(data)
         html = _build_drive_notification_html(data)
-        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
 
     async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
         subject = f"[{data.company_name}] {data.broadcast_title}"
         text = _build_manual_broadcast_text(data)
         html = _build_manual_broadcast_html(data)
-        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
 
 
 # ---------------------------------------------------------------------------
@@ -349,18 +354,23 @@ class BrevoAdapter(EmailService):
         self.from_email = from_email
         self.from_name = from_name
 
-    def _send_sync(self, to_email: str, subject: str, text_content: str, html_content: str) -> None:
+    def _send_sync(self, to_email: str, to_name: str, subject: str, text_content: str, html_content: str) -> None:
         import urllib.request
+        import urllib.error
         import json
 
         url = "https://api.brevo.com/v3/smtp/email"
         payload = {
             "sender": {"name": self.from_name, "email": self.from_email},
-            "to": [{"email": to_email}],
+            "to": [{"email": to_email, "name": to_name}],
             "subject": subject,
             "htmlContent": html_content,
             "textContent": text_content,
         }
+        logger.info(
+            "Brevo: sending email to=%s from=%s subject=%s",
+            to_email, self.from_email, subject,
+        )
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
@@ -372,30 +382,40 @@ class BrevoAdapter(EmailService):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                logger.info("Email delivered via Brevo to %s | status=%s", to_email, resp.status)
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                resp_body = resp.read().decode("utf-8")
+                logger.info(
+                    "Brevo: email delivered to %s | status=%s | response=%s",
+                    to_email, resp.status, resp_body,
+                )
         except urllib.error.HTTPError as he:
             err_body = he.read().decode("utf-8")
-            logger.error("Brevo API error (%s): %s", he.code, err_body)
+            logger.error(
+                "Brevo API error sending to %s: HTTP %s — %s",
+                to_email, he.code, err_body,
+            )
             raise RuntimeError(f"Brevo HTTP {he.code}: {err_body}") from he
+        except Exception as exc:
+            logger.error("Brevo unexpected error sending to %s: %s", to_email, exc)
+            raise
 
     async def send_activation_email(self, data: ActivationEmailData) -> None:
         subject = "Activate your CampusFlow Account"
         text = _build_activation_text(data)
         html = _build_activation_html(data)
-        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
 
     async def send_drive_notification_email(self, data: DriveNotificationEmailData) -> None:
         subject = f"[{data.company_name}] {data.drive_title} — Placement Announcement"
         text = _build_drive_notification_text(data)
         html = _build_drive_notification_html(data)
-        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
 
     async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
         subject = f"[{data.company_name}] {data.broadcast_title}"
         text = _build_manual_broadcast_text(data)
         html = _build_manual_broadcast_html(data)
-        await asyncio.to_thread(self._send_sync, data.recipient_email, subject, text, html)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
 
 
 # ---------------------------------------------------------------------------
