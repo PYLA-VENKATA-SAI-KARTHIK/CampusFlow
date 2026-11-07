@@ -11,7 +11,6 @@ from typing import Sequence, Union
 import uuid
 
 from alembic import op
-import bcrypt
 import sqlalchemy as sa
 
 
@@ -21,10 +20,9 @@ down_revision: Union[str, None] = '0013_seed_klu_students_master'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-
-def hash_pwd(password: str) -> str:
-    salt = bcrypt.gensalt(rounds=12)
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+ADMIN_HASH = '$2b$12$Q3cBQOOvylryK0XRWHzHV.ayYXOzA5g45LccfA6WqNSTUfIDIDNW6'
+OFFICER_HASH = '$2b$12$Gcy4U00E1LAuic3b8JUzgulpyeo8Awk5tnTRglpVvC7u5/05qNlii'
+STUDENT_HASH = '$2b$12$16bN8GkoRVusreY4XXORx.vPlMzg/5XvSBoNsi3KU8Yl2RwqHcbMi'
 
 
 def upgrade() -> None:
@@ -34,31 +32,31 @@ def upgrade() -> None:
     users_to_seed = [
         {
             "email": "admin@campusflow.edu",
-            "password": "TestAdmin@123",
+            "password_hash": ADMIN_HASH,
             "full_name": "Institutional Administrator",
             "role": "ADMIN",
         },
         {
             "email": "officer@campusflow.edu",
-            "password": "TestOfficer@123",
+            "password_hash": OFFICER_HASH,
             "full_name": "CDC Placement Officer",
             "role": "OFFICER",
         },
         {
             "email": "dhilipanrajkumar@gmail.com",
-            "password": "TestOfficer@123",
+            "password_hash": OFFICER_HASH,
             "full_name": "Mr. Dhilipanrajkumar",
             "role": "OFFICER",
         },
         {
             "email": "placement@klu.ac.in",
-            "password": "TestOfficer@123",
+            "password_hash": OFFICER_HASH,
             "full_name": "KARE Placement Cell",
             "role": "OFFICER",
         },
         {
             "email": "student1@campusflow.edu",
-            "password": "TestStudent@123",
+            "password_hash": STUDENT_HASH,
             "full_name": "Demo Student",
             "role": "STUDENT",
         },
@@ -67,8 +65,6 @@ def upgrade() -> None:
     officer_user_id = None
 
     for u in users_to_seed:
-        pwd_hash = hash_pwd(u["password"])
-        # Check if user already exists
         res = bind.execute(
             sa.text("SELECT id FROM users WHERE LOWER(email) = LOWER(:email)"),
             {"email": u["email"]}
@@ -89,7 +85,7 @@ def upgrade() -> None:
                 """),
                 {
                     "id": uid,
-                    "pwd_hash": pwd_hash,
+                    "pwd_hash": u["password_hash"],
                     "role": u["role"],
                     "full_name": u["full_name"],
                 }
@@ -104,7 +100,7 @@ def upgrade() -> None:
                 {
                     "id": uid,
                     "email": u["email"].lower(),
-                    "pwd_hash": pwd_hash,
+                    "pwd_hash": u["password_hash"],
                     "role": u["role"],
                     "full_name": u["full_name"],
                 }
