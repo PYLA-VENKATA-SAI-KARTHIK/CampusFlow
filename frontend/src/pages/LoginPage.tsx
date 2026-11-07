@@ -18,13 +18,13 @@ export const LoginPage = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [selectedRole, setSelectedRole] = useState<'student' | 'officer' | 'admin'>('student');
   const { setSession } = useAuthStore();
   const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -56,12 +56,6 @@ export const LoginPage = () => {
     if (authSuccess) {
       navigate('/');
     }
-  };
-
-  const handleFillDemo = (email: string, pass: string) => {
-    setServerError(null);
-    setValue('email', email, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    setValue('password', pass, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   return (
@@ -164,19 +158,91 @@ export const LoginPage = () => {
             </div>
           )}
 
+          {/* Role Access Selector Tabs */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                [SYS.ROLE] SELECT PORTAL ACCESS
+              </span>
+              <span className="text-[10px] font-mono text-[#6d50b4] font-semibold uppercase">
+                {selectedRole === 'student' && 'Student Portal'}
+                {selectedRole === 'officer' && 'Placement Officer Portal'}
+                {selectedRole === 'admin' && 'Administrative Portal'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole('student');
+                  setServerError(null);
+                }}
+                className={`p-2.5 text-center rounded-sm border transition cursor-pointer flex flex-col items-center justify-center ${
+                  selectedRole === 'student'
+                    ? 'border-[#6d50b4] bg-[#f6f3fc] shadow-[2px_2px_0px_#9b86d9]'
+                    : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'
+                }`}
+              >
+                <span className="text-xs font-bold text-slate-900 font-display">Student Login</span>
+                <span className="text-[10px] text-slate-500 font-mono mt-0.5">Candidate</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole('officer');
+                  setServerError(null);
+                }}
+                className={`p-2.5 text-center rounded-sm border transition cursor-pointer flex flex-col items-center justify-center ${
+                  selectedRole === 'officer'
+                    ? 'border-[#6d50b4] bg-[#f6f3fc] shadow-[2px_2px_0px_#9b86d9]'
+                    : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'
+                }`}
+              >
+                <span className="text-xs font-bold text-slate-900 font-display">Officer Login</span>
+                <span className="text-[10px] text-slate-500 font-mono mt-0.5">CDC Placement</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole('admin');
+                  setServerError(null);
+                }}
+                className={`p-2.5 text-center rounded-sm border transition cursor-pointer flex flex-col items-center justify-center ${
+                  selectedRole === 'admin'
+                    ? 'border-[#6d50b4] bg-[#f6f3fc] shadow-[2px_2px_0px_#9b86d9]'
+                    : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'
+                }`}
+              >
+                <span className="text-xs font-bold text-slate-900 font-display">Admin Login</span>
+                <span className="text-[10px] text-slate-500 font-mono mt-0.5">Governance</span>
+              </button>
+            </div>
+          </div>
+
           {/* Form */}
           <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
             {/* Registration No. / Email */}
             <div>
               <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Registration No. / University Email
+                {selectedRole === 'student' && 'Registration No. / University Email'}
+                {selectedRole === 'officer' && 'Placement Officer Institutional Email'}
+                {selectedRole === 'admin' && 'Administrator User ID / Email'}
               </label>
               <input
                 type="text"
                 inputMode="text"
                 autoComplete="username"
                 data-testid="input-identifier"
-                placeholder="e.g. 99230041249 or student@campusflow.edu"
+                placeholder={
+                  selectedRole === 'student'
+                    ? 'e.g. 99230041249 or student@campusflow.edu'
+                    : selectedRole === 'officer'
+                    ? 'e.g. officer@campusflow.edu'
+                    : 'e.g. admin@campusflow.edu'
+                }
                 {...register('email')}
                 className="block w-full px-3.5 py-2.5 bg-[#f5f6f9] border border-slate-300 focus:border-[#9b86d9] focus:bg-white rounded-sm text-xs sm:text-sm placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#9b86d9]/30 transition shadow-xs"
               />
@@ -267,41 +333,24 @@ export const LoginPage = () => {
             </div>
           </form>
 
-          {/* ── Demo Access Selector (Tactile Hardware Keys) ───────────────── */}
+          {/* ── Institutional Security Notice ──────────────────────────────── */}
           <div className="pt-6 border-t border-slate-200">
-            <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
-                [SYS.ACCESS] ONE-CLICK DEMO KEYS
+                [SEC.GOV] INSTITUTIONAL AUTHENTICATION
               </span>
-              <span className="text-[10px] font-mono text-[#6d50b4] font-semibold">
-                PRE-AUTHENTICATED
+              <span className="text-[10px] font-mono text-emerald-600 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                ENCRYPTED SSL
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('student1@campusflow.edu', 'TestStudent@123')}
-                className="p-2.5 text-center rounded-sm border border-slate-300 hover:border-[#9b86d9] hover:bg-[#f6f3fc] bg-white transition group shadow-[2px_2px_0px_rgba(10,11,16,0.06)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-              >
-                <span className="block text-xs font-bold text-slate-900 group-hover:text-[#5a4195] font-display">Student</span>
-                <span className="block text-[10px] text-slate-500 font-mono mt-0.5">student1</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('dhilipanrajkumar@gmail.com', 'TestOfficer@123')}
-                className="p-2.5 text-center rounded-sm border border-slate-300 hover:border-[#9b86d9] hover:bg-[#f6f3fc] bg-white transition group shadow-[2px_2px_0px_rgba(10,11,16,0.06)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-              >
-                <span className="block text-xs font-bold text-slate-900 group-hover:text-[#5a4195] font-display">Officer</span>
-                <span className="block text-[10px] text-slate-500 font-mono mt-0.5 truncate">officer</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('admin@campusflow.edu', 'TestAdmin@123')}
-                className="p-2.5 text-center rounded-sm border border-slate-300 hover:border-[#9b86d9] hover:bg-[#f6f3fc] bg-white transition group shadow-[2px_2px_0px_rgba(10,11,16,0.06)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-              >
-                <span className="block text-xs font-bold text-slate-900 group-hover:text-[#5a4195] font-display">Admin</span>
-                <span className="block text-[10px] text-slate-500 font-mono mt-0.5">admin</span>
-              </button>
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-sm text-[11px] text-slate-600 space-y-1">
+              <p className="font-semibold text-slate-800">
+                Kalasalingam Academy of Research and Education Placement Gateway
+              </p>
+              <p className="text-slate-500 leading-relaxed text-[11px]">
+                Authorized access for registered KARE candidates, placement coordinators, and system administrators. Credentials are securely encrypted. For account assistance or password resets, contact the CDC placement cell.
+              </p>
             </div>
           </div>
         </div>
