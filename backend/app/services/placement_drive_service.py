@@ -304,15 +304,8 @@ class PlacementDriveService:
             and self.dispatcher
         ):
             try:
-                # Query all candidate users with student profiles in the portal
-                stmt = (
-                    select(User)
-                    .options(
-                        selectinload(User.student_profile).selectinload(StudentProfile.branch)
-                    )
-                    .where(User.role == "STUDENT")
-                )
-                active_users = (await self.drive_repo.session.execute(stmt)).scalars().all()
+                # Query all active candidate profiles in the portal
+                active_profiles = await self.student_repo.list_all_active_profiles()
 
                 items = []
                 notif_type = "REGISTRATION_OPEN" if new_status == "REGISTRATION_OPEN" else "DRIVE_PUBLISHED"
@@ -322,16 +315,15 @@ class PlacementDriveService:
                     if new_status == "REGISTRATION_OPEN"
                     else f"{company_name} is hiring for {job_role}. Check your eligibility and register before the deadline."
                 )
-                for user in active_users:
-                    profile = user.student_profile
-                    # If criteria exists and student has a profile, evaluate eligibility
-                    if profile and criteria_dict:
+                for profile in active_profiles:
+                    # If criteria exists, evaluate student eligibility
+                    if criteria_dict:
                         is_eligible, _ = EligibilityService.evaluate(profile, criteria_dict)
                         if not is_eligible:
                             continue
 
                     items.append({
-                        "user_id": user.id,
+                        "user_id": profile.user_id,
                         "title": notif_title,
                         "body": notif_body,
                         "notification_type": notif_type,
