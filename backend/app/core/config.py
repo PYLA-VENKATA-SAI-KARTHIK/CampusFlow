@@ -138,6 +138,13 @@ class Settings(BaseSettings):
     smtp_from_name: str = "CampusFlow Placements"
     frontend_base_url: str = "https://kare-placements.onrender.com"
 
+    @field_validator("frontend_base_url", mode="before")
+    @classmethod
+    def sanitize_frontend_base_url(cls, v: str) -> str:
+        if not v or "campusflow-web.onrender.com" in v or "localhost" in v and "production" in cls.__name__.lower():
+            return "https://kare-placements.onrender.com"
+        return v.rstrip("/")
+
     # -------------------------------------------------------------------------
     # Rate limiting
     # -------------------------------------------------------------------------
