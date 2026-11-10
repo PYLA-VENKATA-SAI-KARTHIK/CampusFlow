@@ -38,6 +38,8 @@ async def smtp_diagnostic() -> dict:
         "brevo_api_key_prefix": settings.brevo_api_key[:8] + "..." if settings.brevo_api_key else "(not set)",
         "brevo_from_email": settings.brevo_from_email,
         "brevo_configured": bool(settings.brevo_api_key),
+        "gmail_api_configured": bool(settings.gmail_client_id and settings.gmail_refresh_token),
+        "gmail_from_email": settings.gmail_from_email,
         "sendgrid_configured": bool(settings.sendgrid_api_key),
     }
 

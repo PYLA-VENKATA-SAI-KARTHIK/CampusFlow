@@ -32,6 +32,9 @@ credentials/
 secrets/
 *service-account*.json
 *service_account*.json
+.gmail*.json
+*token*.json
+*credentials*.json
 
 # IDE
 .vscode/

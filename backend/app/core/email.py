@@ -419,6 +419,126 @@ class BrevoAdapter(EmailService):
 
 
 # ---------------------------------------------------------------------------
+# Gmail API adapter — Official Google REST API over HTTPS (Port 443)
+# ---------------------------------------------------------------------------
+
+
+class GmailApiAdapter(EmailService):
+    """
+    Official Google Gmail REST API adapter over HTTPS (Port 443).
+    Bypasses cloud host SMTP port blocks entirely.
+    Uses OAuth2 refresh token to automatically acquire and cache access tokens.
+    """
+
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        refresh_token: str,
+        from_email: str = "",
+        from_name: str = "CampusFlow Placements",
+    ) -> None:
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.refresh_token = refresh_token
+        self.from_email = from_email
+        self.from_name = from_name
+        self._access_token: str | None = None
+        self._token_expires_at: float = 0.0
+
+    def _get_access_token(self) -> str:
+        import time
+        import urllib.request
+        import urllib.parse
+        import json
+
+        now = time.time()
+        if self._access_token and now < self._token_expires_at - 60:
+            return self._access_token
+
+        token_url = "https://oauth2.googleapis.com/token"
+        data = urllib.parse.urlencode({
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "refresh_token": self.refresh_token,
+            "grant_type": "refresh_token",
+        }).encode("utf-8")
+
+        req = urllib.request.Request(token_url, data=data, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                self._access_token = result["access_token"]
+                expires_in = result.get("expires_in", 3600)
+                self._token_expires_at = now + expires_in
+                logger.info("Refreshed Google OAuth2 access token (expires in %ds)", expires_in)
+                return self._access_token
+        except urllib.error.HTTPError as he:
+            err = he.read().decode("utf-8")
+            logger.error("Failed to refresh Google OAuth token: HTTP %d: %s", he.code, err)
+            raise RuntimeError(f"Google OAuth refresh error ({he.code}): {err}") from he
+
+    def _send_sync(self, to_email: str, to_name: str, subject: str, text_content: str, html_content: str) -> None:
+        import urllib.request
+        import urllib.error
+        import base64
+        import json
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        token = self._get_access_token()
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        sender_hdr = f"{self.from_name} <{self.from_email}>" if self.from_email else self.from_name
+        msg["From"] = sender_hdr
+        msg["To"] = f"{to_name} <{to_email}>" if to_name else to_email
+        msg.attach(MIMEText(text_content, "plain", "utf-8"))
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+        raw_b64 = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+        payload = json.dumps({"raw": raw_b64}).encode("utf-8")
+
+        send_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+        req = urllib.request.Request(
+            send_url,
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "User-Agent": "CampusFlow/1.0",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                resp_data = json.loads(resp.read().decode("utf-8"))
+                logger.info("Gmail API: Delivered email to %s (id=%s)", to_email, resp_data.get("id"))
+        except urllib.error.HTTPError as he:
+            err = he.read().decode("utf-8")
+            logger.error("Gmail API send error to %s: HTTP %d: %s", to_email, he.code, err)
+            raise RuntimeError(f"Gmail API error ({he.code}): {err}") from he
+
+    async def send_activation_email(self, data: ActivationEmailData) -> None:
+        subject = "Activate your CampusFlow Account"
+        text = _build_activation_text(data)
+        html = _build_activation_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
+
+    async def send_drive_notification_email(self, data: DriveNotificationEmailData) -> None:
+        subject = f"[{data.company_name}] {data.drive_title} — Placement Announcement"
+        text = _build_drive_notification_text(data)
+        html = _build_drive_notification_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
+
+    async def send_manual_broadcast_email(self, data: ManualBroadcastEmailData) -> None:
+        subject = f"[{data.company_name}] {data.broadcast_title}"
+        text = _build_manual_broadcast_text(data)
+        html = _build_manual_broadcast_html(data)
+        await asyncio.to_thread(self._send_sync, data.recipient_email, data.recipient_name, subject, text, html)
+
+
+# ---------------------------------------------------------------------------
 # SMTP adapter — standard library SMTP (Gmail, Outlook, University SMTP)
 # ---------------------------------------------------------------------------
 
@@ -738,6 +858,11 @@ def create_email_service(
     brevo_api_key: str = "",
     brevo_from_email: str = "noreply@campusflow.internal",
     brevo_from_name: str = "CampusFlow Placements",
+    gmail_client_id: str = "",
+    gmail_client_secret: str = "",
+    gmail_refresh_token: str = "",
+    gmail_from_email: str = "",
+    gmail_from_name: str = "CampusFlow Placements",
     smtp_host: str = "",
     smtp_port: int = 587,
     smtp_user: str = "",
@@ -750,6 +875,20 @@ def create_email_service(
     Create the appropriate EmailService implementation based on the provider.
     Called once at application startup.
     """
+    if provider == "gmail_api":
+        if not gmail_client_id or not gmail_client_secret or not gmail_refresh_token:
+            raise ValueError(
+                "GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN must be set when EMAIL_PROVIDER=gmail_api"
+            )
+        logger.info("Email service: Google Gmail REST API adapter initialized")
+        return GmailApiAdapter(
+            client_id=gmail_client_id,
+            client_secret=gmail_client_secret,
+            refresh_token=gmail_refresh_token,
+            from_email=gmail_from_email,
+            from_name=gmail_from_name,
+        )
+
     if provider == "resend":
         if not resend_api_key:
             raise ValueError("RESEND_API_KEY must be set when EMAIL_PROVIDER=resend")
@@ -815,6 +954,11 @@ def get_email_service() -> EmailService:
             brevo_api_key=settings.brevo_api_key,
             brevo_from_email=settings.brevo_from_email,
             brevo_from_name=settings.brevo_from_name,
+            gmail_client_id=settings.gmail_client_id,
+            gmail_client_secret=settings.gmail_client_secret,
+            gmail_refresh_token=settings.gmail_refresh_token,
+            gmail_from_email=settings.gmail_from_email,
+            gmail_from_name=settings.gmail_from_name,
             smtp_host=settings.smtp_host,
             smtp_port=settings.smtp_port,
             smtp_user=settings.smtp_user,

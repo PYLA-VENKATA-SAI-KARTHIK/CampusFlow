@@ -24,7 +24,8 @@ _task_semaphore: asyncio.Semaphore | None = None
 def _get_task_semaphore() -> asyncio.Semaphore:
     global _task_semaphore
     if _task_semaphore is None:
-        _task_semaphore = asyncio.Semaphore(4)
+        # 20 concurrent background workers for high-throughput batching (~20-25 emails/sec)
+        _task_semaphore = asyncio.Semaphore(20)
     return _task_semaphore
 
 
