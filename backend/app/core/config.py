@@ -127,8 +127,8 @@ class Settings(BaseSettings):
     gmail_client_id: str = ""
     gmail_client_secret: str = ""
     gmail_refresh_token: str = ""
-    gmail_from_email: str = ""
-    gmail_from_name: str = "CampusFlow Placements"
+    gmail_from_email: str = "99230041249@klu.ac.in"
+    gmail_from_name: str = "KARE PLACEMENT CELL"
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = "pylasai43@gmail.com"

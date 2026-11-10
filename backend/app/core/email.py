@@ -485,14 +485,16 @@ class GmailApiAdapter(EmailService):
         import json
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
+        from email.utils import formataddr
 
         token = self._get_access_token()
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        sender_hdr = f"{self.from_name} <{self.from_email}>" if self.from_email else self.from_name
-        msg["From"] = sender_hdr
-        msg["To"] = f"{to_name} <{to_email}>" if to_name else to_email
+        display_name = self.from_name or "KARE PLACEMENT CELL"
+        from_addr = self.from_email or "99230041249@klu.ac.in"
+        msg["From"] = formataddr((display_name, from_addr))
+        msg["To"] = formataddr((to_name or "Student", to_email))
         msg.attach(MIMEText(text_content, "plain", "utf-8"))
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
