@@ -57,3 +57,4 @@ export const useInactivityTimeout = () => {
     };
   }, [isAuthenticated, clearSession, navigate]);
 };
+
