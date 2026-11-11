@@ -120,13 +120,13 @@ export const LoginPage = () => {
         <div className="relative z-10 text-white drop-shadow-lg space-y-3">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-sm bg-slate-950/75 backdrop-blur-md border border-white/20 text-[11px] font-mono font-semibold text-slate-200">
             <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
-            <span>CAMPUS PLACEMENT OPERATING PLATFORM ACTIVE</span>
+            <span>KARE-PLACEMENTS PORTAL ACTIVE</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display tracking-tight leading-snug max-w-lg">
-            Institutional Career Intelligence & Drive Governance
+            KARE-PLACEMENTS PORTAL
           </h2>
           <p className="text-xs font-medium text-slate-300 max-w-md leading-relaxed font-sans">
-            Authoritative platform for institutional placement drives, automated eligibility validation, assessment rounds, and talent progression.
+            Authoritative institutional portal for Kalasalingam University campus placement drives, automated eligibility validation, assessment rounds, and career progression.
           </p>
         </div>
       </div>
@@ -139,15 +139,15 @@ export const LoginPage = () => {
             <div className="flex items-center space-x-2 font-mono text-[11px] text-[#6d50b4] font-bold uppercase tracking-widest">
               <span>[SEC.01]</span>
               <span>//</span>
-              <span>AUTH.GATEWAY</span>
+              <span>KARE-PLACEMENTS PORTAL</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 font-display tracking-tight">
-              Sign In // <span className="text-[#9b86d9]">CampusFlow</span>
+              Sign In // <span className="text-[#9b86d9]">KARE-PLACEMENTS</span>
             </h1>
 
             <p className="font-mono text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Student Information System & Placement Intelligence
+              KARE-PLACEMENTS PORTAL • Student Information System
             </p>
 
             <p className="text-xs text-slate-600 leading-relaxed">
