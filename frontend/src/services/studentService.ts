@@ -33,6 +33,8 @@ export interface StudentListResponse {
   page: number;
   page_size: number;
   has_next: boolean;
+  active_count?: number;
+  pending_count?: number;
 }
 
 export interface StudentImportPreviewItem {

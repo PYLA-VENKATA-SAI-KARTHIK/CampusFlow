@@ -14,6 +14,8 @@ class PaginatedResponse(BaseModel, Generic[T]):
     page: int
     page_size: int
     has_next: bool
+    active_count: int | None = None
+    pending_count: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

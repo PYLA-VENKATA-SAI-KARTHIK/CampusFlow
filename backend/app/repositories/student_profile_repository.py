@@ -99,8 +99,15 @@ class StudentProfileRepository:
                 (StudentProfile.branch_code.ilike(search_term))
             )
 
-        count_stmt = select(func.count()).select_from(base_stmt.subquery())
-        total = await self.session.scalar(count_stmt) or 0
+        count_stmt = select(
+            func.count().label("total"),
+            func.count(case((User.is_active == True, 1))).label("active"),
+            func.count(case((User.is_active == False, 1))).label("pending"),
+        ).select_from(base_stmt.subquery())
+        counts_row = (await self.session.execute(count_stmt)).mappings().first()
+        total = counts_row["total"] if counts_row else 0
+        active_count = counts_row["active"] if counts_row else 0
+        pending_count = counts_row["pending"] if counts_row else 0
 
         stmt = (
             base_stmt
@@ -114,7 +121,7 @@ class StudentProfileRepository:
         )
         
         result = await self.session.execute(stmt)
-        return result.scalars().all(), total
+        return result.scalars().all(), total, active_count, pending_count
 
     async def list_all_active_profiles(self) -> Sequence[StudentProfile]:
         """Fetch all student profiles belonging to active users."""

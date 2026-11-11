@@ -21,6 +21,7 @@ from app.schemas.assessment import (
     AssessmentStudentPreview,
     AssessmentSummary,
     AssessmentUpdate,
+    GenerateQuestionsRequest,
     OfficerAssessmentResultsView,
     QuestionAdminView,
     QuestionCreate,
@@ -244,6 +245,25 @@ async def add_question(
     service: Annotated[AssessmentService, Depends(get_assessment_service)],
 ) -> QuestionAdminView:
     return await service.add_question(
+        assessment_id=assessment_id,
+        payload=payload,
+        user_id=UUID(current_user.user_id),
+    )
+
+
+@router.post(
+    "/{assessment_id}/generate-questions",
+    response_model=list[QuestionAdminView],
+    status_code=status.HTTP_201_CREATED,
+    summary="AI generate multiple MCQ questions for a draft assessment",
+)
+async def generate_questions(
+    assessment_id: UUID,
+    payload: GenerateQuestionsRequest,
+    current_user: Annotated[UserContext, Depends(require_role("OFFICER", "ADMIN"))],
+    service: Annotated[AssessmentService, Depends(get_assessment_service)],
+) -> list[QuestionAdminView]:
+    return await service.generate_ai_questions(
         assessment_id=assessment_id,
         payload=payload,
         user_id=UUID(current_user.user_id),

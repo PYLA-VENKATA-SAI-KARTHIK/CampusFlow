@@ -32,6 +32,7 @@ from app.schemas.assessment import (
     AssessmentStudentPreview,
     AssessmentSummary,
     AssessmentUpdate,
+    GenerateQuestionsRequest,
     OfficerAssessmentResultsView,
     OptionItem,
     QuestionAdminView,
@@ -287,6 +288,76 @@ class AssessmentService:
             created_at=loaded_q.created_at,
             updated_at=loaded_q.updated_at,
         )
+
+    async def generate_ai_questions(
+        self, assessment_id: UUID, payload: GenerateQuestionsRequest, user_id: UUID
+    ) -> list[QuestionAdminView]:
+        assessment = await self.assessment_repo.get_assessment_by_id(assessment_id)
+        if not assessment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assessment not found.",
+            )
+
+        if assessment.status != "DRAFT":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Questions can only be added to assessments in DRAFT status.",
+            )
+
+        existing_questions = await self.assessment_repo.list_questions_for_assessment(assessment_id)
+        start_seq = len(existing_questions)
+
+        from app.services.question_generator import generate_assessment_mcqs
+
+        topic_name = payload.topic
+        if not topic_name and assessment.topic:
+            topic_name = assessment.topic.name
+        elif not topic_name:
+            topic_name = assessment.title
+
+        difficulty = payload.difficulty or assessment.difficulty
+
+        generated_items = await generate_assessment_mcqs(
+            topic=topic_name,
+            count=payload.count,
+            difficulty=difficulty,
+        )
+
+        created_views: list[QuestionAdminView] = []
+        for idx, item in enumerate(generated_items):
+            q_order = start_seq + idx + 1
+            question = AssessmentQuestion(
+                assessment_id=assessment_id,
+                topic_id=assessment.topic_id,
+                question_text=item["question_text"],
+                options=item["options"],
+                correct_option=item["correct_option"].strip().upper(),
+                explanation=item.get("explanation"),
+                marks=Decimal(str(item.get("marks", 1))),
+                sequence_order=q_order,
+            )
+            created = await self.assessment_repo.create_question(question)
+            created_views.append(
+                QuestionAdminView(
+                    id=created.id,
+                    assessment_id=created.assessment_id,
+                    topic_id=created.topic_id,
+                    topic_name=assessment.topic.name if assessment.topic else None,
+                    question_text=created.question_text,
+                    options=[OptionItem(**opt) for opt in created.options],
+                    correct_option=created.correct_option,
+                    explanation=created.explanation,
+                    marks=created.marks,
+                    sequence_order=created.sequence_order,
+                    created_at=created.created_at,
+                    updated_at=created.updated_at,
+                )
+            )
+
+        await self.assessment_repo.recalculate_total_marks(assessment_id)
+        await self.assessment_repo.session.commit()
+        return created_views
 
     async def update_question(
         self,

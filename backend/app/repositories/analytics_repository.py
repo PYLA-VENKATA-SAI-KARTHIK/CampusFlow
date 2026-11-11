@@ -191,19 +191,22 @@ class AnalyticsRepository:
 
     async def get_overview_drives_summary(self) -> dict[str, Any]:
         """Aggregate total drives by status and CTC statistics."""
-        stmt = select(
-            func.count(PlacementDrive.id).label("total_drives"),
-            func.count(
-                case((PlacementDrive.status == "DRAFT", 1))
-            ).label("draft_drives"),
-            func.count(
-                case((PlacementDrive.status == "COMPLETED", 1))
-            ).label("completed_drives"),
-            func.count(
-                case((PlacementDrive.status.notin_(("DRAFT", "COMPLETED")), 1))
-            ).label("active_drives"),
-            func.avg(PlacementDrive.ctc_lpa).label("avg_ctc"),
-            func.max(PlacementDrive.ctc_lpa).label("max_ctc"),
+        stmt = (
+            select(
+                func.count(PlacementDrive.id).label("total_drives"),
+                func.count(
+                    case((PlacementDrive.status == "DRAFT", 1))
+                ).label("draft_drives"),
+                func.count(
+                    case((PlacementDrive.status == "COMPLETED", 1))
+                ).label("completed_drives"),
+                func.count(
+                    case((PlacementDrive.status.notin_(("DRAFT", "COMPLETED", "ARCHIVED")), 1))
+                ).label("active_drives"),
+                func.avg(PlacementDrive.ctc_lpa).label("avg_ctc"),
+                func.max(PlacementDrive.ctc_lpa).label("max_ctc"),
+            )
+            .where(PlacementDrive.status != "ARCHIVED")
         )
         result = await self.session.execute(stmt)
         row = result.mappings().first()
@@ -327,6 +330,7 @@ class AnalyticsRepository:
             .join(Company, PlacementDrive.company_id == Company.id)
             .outerjoin(DriveRegistration, DriveRegistration.drive_id == PlacementDrive.id)
             .outerjoin(StageAssignment, StageAssignment.drive_id == PlacementDrive.id)
+            .where(PlacementDrive.status != "ARCHIVED")
             .group_by(PlacementDrive.id, Company.name)
             .order_by(PlacementDrive.created_at.desc())
             .limit(limit)

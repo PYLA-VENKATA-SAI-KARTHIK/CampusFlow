@@ -22,6 +22,12 @@ class OptionItem(BaseModel):
     text: str = Field(..., min_length=1, max_length=1000, description="Option display text")
 
 
+class GenerateQuestionsRequest(BaseModel):
+    topic: str = Field(default="DSA & Problem Solving", description="Topic, skill, or role title")
+    count: int = Field(default=5, ge=1, le=20, description="Number of questions to generate (1-20)")
+    difficulty: str = Field(default="MEDIUM", description="EASY, MEDIUM, or HARD")
+
+
 class QuestionCreate(BaseModel):
     question_text: str = Field(..., min_length=3, description="Text of the question")
     options: list[OptionItem] = Field(..., min_length=2, max_length=10, description="List of MCQ options")

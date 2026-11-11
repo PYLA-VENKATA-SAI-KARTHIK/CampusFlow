@@ -39,7 +39,7 @@ async def list_students(
 ) -> PaginatedResponse[StudentProfileResponse]:
     """List all student profiles. Restricted to OFFICER and ADMIN."""
     skip = (page - 1) * page_size
-    students, total = await service.list_students(
+    students, total, active_count, pending_count = await service.list_students(
         skip=skip, 
         limit=page_size, 
         branch_code=branch_code,
@@ -53,7 +53,9 @@ async def list_students(
         total=total,
         page=page,
         page_size=page_size,
-        has_next=(skip + page_size) < total
+        has_next=(skip + page_size) < total,
+        active_count=active_count,
+        pending_count=pending_count,
     )
 
 

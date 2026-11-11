@@ -150,7 +150,7 @@ class StudentProfileService:
         batch_year: int | None = None,
         min_cgpa: float | None = None,
         search: str | None = None
-    ) -> tuple[Sequence[StudentProfile], int]:
+    ) -> tuple[Sequence[StudentProfile], int, int, int]:
         return await self.profile_repo.list_students(
             skip=skip, 
             limit=limit, 

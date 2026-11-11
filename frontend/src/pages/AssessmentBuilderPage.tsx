@@ -56,6 +56,14 @@ export const AssessmentBuilderPage: React.FC = () => {
   const [assigning, setAssigning] = useState(false);
   const [assignSuccess, setAssignSuccess] = useState<string | null>(null);
 
+  // AI Question Generator Modal
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiCount, setAiCount] = useState<number>(5);
+  const [aiDifficulty, setAiDifficulty] = useState<string>('MEDIUM');
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   useEffect(() => {
     if (id) {
       loadAssessmentData();
@@ -95,6 +103,35 @@ export const AssessmentBuilderPage: React.FC = () => {
     setExplanation('');
     setQuestionError(null);
     setShowQuestionModal(true);
+  };
+
+  const openAiModal = () => {
+    setAiTopic(assessment?.topic_name || assessment?.title || 'Data Structures & Algorithms');
+    setAiDifficulty(assessment?.difficulty || 'MEDIUM');
+    setAiCount(5);
+    setAiError(null);
+    setShowAiModal(true);
+  };
+
+  const handleGenerateAiQuestions = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    setGeneratingAi(true);
+    setAiError(null);
+    try {
+      const generated = await assessmentService.generateQuestions(id, {
+        topic: aiTopic.trim() || 'General Technical & Aptitude',
+        count: Number(aiCount),
+        difficulty: aiDifficulty,
+      });
+      setShowAiModal(false);
+      setActionSuccess(`Successfully generated and added ${generated.length} AI questions! Review or edit them below before publishing.`);
+      await loadAssessmentData();
+    } catch (err: any) {
+      setAiError(err?.response?.data?.detail || 'Failed to generate questions. Please try again.');
+    } finally {
+      setGeneratingAi(false);
+    }
   };
 
   const openEditQuestionModal = (q: QuestionAdminView) => {
@@ -339,6 +376,14 @@ export const AssessmentBuilderPage: React.FC = () => {
         <div className="flex items-center space-x-3">
           {assessment.status === 'DRAFT' && (
             <>
+              <button
+                onClick={openAiModal}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition flex items-center space-x-1.5"
+              >
+                <span>✨</span>
+                <span>AI Generate Questions</span>
+              </button>
+
               <button
                 onClick={openAddQuestionModal}
                 className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition flex items-center space-x-1.5"
@@ -796,7 +841,152 @@ export const AssessmentBuilderPage: React.FC = () => {
         </div>
       )}
 
-      {/* ASSIGN MODAL */}
+      {/* AI QUESTION GENERATOR MODAL */}
+      {showAiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-xl text-sm">✨</span>
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900">AI Question Generator</h2>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Generate an instant set of placement-ready MCQs with answers & explanations
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAiModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {aiError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl">
+                {aiError}
+              </div>
+            )}
+
+            <form onSubmit={handleGenerateAiQuestions} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Subject / Topic Domain *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={aiTopic}
+                  onChange={(e) => setAiTopic(e.target.value)}
+                  placeholder="e.g. Data Structures & Algorithms, Python, SQL, Aptitude..."
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+
+                {/* Quick Topic Chips */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[
+                    'Data Structures & Algorithms',
+                    'Python Programming',
+                    'Java & Spring Boot',
+                    'SQL & Database Queries',
+                    'Quantitative Aptitude & Reasoning',
+                    'Web Development & Frontend',
+                    'Cloud & DevOps (AWS)',
+                    'Machine Learning & AI',
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAiTopic(preset)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ${
+                        aiTopic === preset
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Question Count
+                  </label>
+                  <select
+                    value={aiCount}
+                    onChange={(e) => setAiCount(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value={5}>5 Questions</option>
+                    <option value={10}>10 Questions</option>
+                    <option value={15}>15 Questions</option>
+                    <option value={20}>20 Questions</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Difficulty Level
+                  </label>
+                  <select
+                    value={aiDifficulty}
+                    onChange={(e) => setAiDifficulty(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-start space-x-2.5">
+                <span className="text-sm">💡</span>
+                <p className="text-[11px] text-indigo-900 leading-relaxed font-medium">
+                  Questions are generated directly into this draft assessment. You can review, modify answers, or delete any question before clicking <strong className="text-indigo-950 font-bold">Publish Assessment</strong>.
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAiModal(false)}
+                  disabled={generatingAi}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={generatingAi || !aiTopic.trim()}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs transition shadow-md shadow-indigo-600/20 flex items-center space-x-2 disabled:opacity-50"
+                >
+                  {generatingAi ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                      </svg>
+                      <span>Generating {aiCount} Questions...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✨</span>
+                      <span>Generate & Import Questions</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-5">

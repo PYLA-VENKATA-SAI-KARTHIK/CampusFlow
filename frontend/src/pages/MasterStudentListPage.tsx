@@ -7,6 +7,8 @@ import { LoadingSpinner } from '../components/ui/StatusFeedback';
 export const MasterStudentListPage: React.FC = () => {
   const [students, setStudents] = useState<MasterStudentProfile[]>([]);
   const [total, setTotal] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
@@ -29,6 +31,14 @@ export const MasterStudentListPage: React.FC = () => {
       });
       setStudents(res.items);
       setTotal(res.total);
+      if (res.active_count !== undefined) {
+        setActiveCount(res.active_count);
+        setPendingCount(res.pending_count ?? Math.max(0, res.total - res.active_count));
+      } else {
+        const active = res.items.filter((s) => s.user?.is_active).length;
+        setActiveCount(active);
+        setPendingCount(Math.max(0, res.total - active));
+      }
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to load master student list.');
     } finally {
@@ -39,9 +49,6 @@ export const MasterStudentListPage: React.FC = () => {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
-
-  const activeCount = students.filter((s) => s.user?.is_active).length;
-  const pendingCount = students.filter((s) => !s.user?.is_active).length;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

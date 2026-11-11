@@ -51,6 +51,17 @@ export const assessmentService = {
     return res.data;
   },
 
+  generateQuestions: async (
+    assessmentId: string,
+    payload: { topic: string; count: number; difficulty: string }
+  ): Promise<QuestionAdminView[]> => {
+    const res = await apiClient.post<QuestionAdminView[]>(
+      `/assessments/${assessmentId}/generate-questions`,
+      payload
+    );
+    return res.data;
+  },
+
   updateQuestion: async (
     assessmentId: string,
     questionId: string,
