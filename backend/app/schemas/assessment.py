@@ -23,8 +23,9 @@ class OptionItem(BaseModel):
 
 
 class GenerateQuestionsRequest(BaseModel):
-    topic: str = Field(default="DSA & Problem Solving", description="Topic, skill, or role title")
-    count: int = Field(default=5, ge=1, le=20, description="Number of questions to generate (1-20)")
+    topic: str = Field(default="Technical Core", description="Topic, skill, or role title")
+    set_number: int | None = Field(default=1, ge=1, le=5, description="Inbuilt question set number (1 to 5)")
+    count: int = Field(default=15, ge=1, le=50, description="Number of questions to generate (1-50)")
     difficulty: str = Field(default="MEDIUM", description="EASY, MEDIUM, or HARD")
 
 

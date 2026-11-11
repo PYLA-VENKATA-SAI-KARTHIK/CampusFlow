@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from '../store/authStore';
@@ -21,6 +21,8 @@ export const LoginPage = () => {
   const [selectedRole, setSelectedRole] = useState<'student' | 'officer' | 'admin'>('student');
   const { setSession } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isInactiveLogout = searchParams.get('reason') === 'inactivity';
 
   const {
     register,
@@ -152,6 +154,24 @@ export const LoginPage = () => {
               Institutional portal for real-time placement drives, eligibility validation, assessment rounds, and career progression.
             </p>
           </div>
+
+          {/* Session Timeout Inactivity Banner */}
+          {isInactiveLogout && !serverError && (
+            <div
+              className="bg-amber-50 border border-amber-300 text-amber-900 p-3.5 rounded-sm text-xs flex items-start space-x-2.5 animate-fade-in shadow-[2px_2px_0px_#fcd34d]"
+              role="alert"
+            >
+              <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1 font-sans">
+                <p className="font-bold text-amber-950">Session Timed Out</p>
+                <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                  You have been automatically logged out due to 5 minutes of inactivity for security reasons. Please sign in again.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Error Alert Box (Preserves .bg-red-50 for Playwright E2E assertion) */}
           {serverError && (

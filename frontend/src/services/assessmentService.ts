@@ -53,7 +53,7 @@ export const assessmentService = {
 
   generateQuestions: async (
     assessmentId: string,
-    payload: { topic: string; count: number; difficulty: string }
+    payload: { topic: string; count?: number; set_number?: number; difficulty?: string }
   ): Promise<QuestionAdminView[]> => {
     const res = await apiClient.post<QuestionAdminView[]>(
       `/assessments/${assessmentId}/generate-questions`,

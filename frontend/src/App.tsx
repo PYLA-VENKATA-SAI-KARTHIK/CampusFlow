@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { useInactivityTimeout } from './hooks/useInactivityTimeout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { AppLayout } from './layouts/AppLayout';
 import { LoadingSpinner } from './components/ui/StatusFeedback';
@@ -69,10 +70,16 @@ const MockInterviewsPage = lazy(() =>
   import('./pages/MockInterviewsPage').then((m) => ({ default: m.MockInterviewsPage }))
 );
 
+const InactivityTracker = () => {
+  useInactivityTimeout();
+  return null;
+};
+
 function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <InactivityTracker />
         <Suspense
           fallback={
             <LoadingSpinner

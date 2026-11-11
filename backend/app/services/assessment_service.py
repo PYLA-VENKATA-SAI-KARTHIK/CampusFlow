@@ -320,6 +320,7 @@ class AssessmentService:
 
         generated_items = await generate_assessment_mcqs(
             topic=topic_name,
+            set_number=payload.set_number,
             count=payload.count,
             difficulty=difficulty,
         )

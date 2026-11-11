@@ -58,8 +58,9 @@ export const AssessmentBuilderPage: React.FC = () => {
 
   // AI Question Generator Modal
   const [showAiModal, setShowAiModal] = useState(false);
-  const [aiTopic, setAiTopic] = useState('');
-  const [aiCount, setAiCount] = useState<number>(5);
+  const [aiTopic, setAiTopic] = useState('Technical Core');
+  const [aiSetNumber, setAiSetNumber] = useState<number>(1);
+  const [aiCount, setAiCount] = useState<number>(15);
   const [aiDifficulty, setAiDifficulty] = useState<string>('MEDIUM');
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -106,9 +107,11 @@ export const AssessmentBuilderPage: React.FC = () => {
   };
 
   const openAiModal = () => {
-    setAiTopic(assessment?.topic_name || assessment?.title || 'Data Structures & Algorithms');
+    const defaultTopic = assessment?.category_name || assessment?.topic_name || 'Technical Core';
+    setAiTopic(defaultTopic);
+    setAiSetNumber(1);
     setAiDifficulty(assessment?.difficulty || 'MEDIUM');
-    setAiCount(5);
+    setAiCount(15);
     setAiError(null);
     setShowAiModal(true);
   };
@@ -120,12 +123,13 @@ export const AssessmentBuilderPage: React.FC = () => {
     setAiError(null);
     try {
       const generated = await assessmentService.generateQuestions(id, {
-        topic: aiTopic.trim() || 'General Technical & Aptitude',
+        topic: aiTopic.trim() || 'Technical Core',
+        set_number: Number(aiSetNumber),
         count: Number(aiCount),
         difficulty: aiDifficulty,
       });
       setShowAiModal(false);
-      setActionSuccess(`Successfully generated and added ${generated.length} AI questions! Review or edit them below before publishing.`);
+      setActionSuccess(`Successfully generated and added ${generated.length} questions from Set ${aiSetNumber} (${aiTopic})! Review or edit them below before publishing.`);
       await loadAssessmentData();
     } catch (err: any) {
       setAiError(err?.response?.data?.detail || 'Failed to generate questions. Please try again.');
@@ -874,46 +878,60 @@ export const AssessmentBuilderPage: React.FC = () => {
             <form onSubmit={handleGenerateAiQuestions} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Subject / Topic Domain *
+                  Assessment Topic Track *
                 </label>
+                {/* 4 Inbuilt Core Categories */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {[
+                    { title: 'Aptitude & Reasoning', desc: 'Quantitative, logical puzzles & numbers' },
+                    { title: 'Verbal Ability', desc: 'Grammar, vocabulary, corporate English' },
+                    { title: 'Technical Core', desc: 'DSA, OS, DBMS, OOP & Computer Networks' },
+                    { title: 'Interview Preparation', desc: 'System design, HR, behavioral & case studies' },
+                  ].map((track) => (
+                    <button
+                      key={track.title}
+                      type="button"
+                      onClick={() => setAiTopic(track.title)}
+                      className={`p-2.5 rounded-xl border text-left transition ${
+                        aiTopic.toLowerCase().includes(track.title.toLowerCase().split(' ')[0])
+                          ? 'bg-indigo-50 border-indigo-500 shadow-sm ring-1 ring-indigo-500/30'
+                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-slate-900">{track.title}</div>
+                      <div className="text-[10px] text-slate-500 font-medium">{track.desc}</div>
+                    </button>
+                  ))}
+                </div>
+
                 <input
                   type="text"
                   required
                   value={aiTopic}
                   onChange={(e) => setAiTopic(e.target.value)}
-                  placeholder="e.g. Data Structures & Algorithms, Python, SQL, Aptitude..."
-                  className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Or custom topic domain..."
+                  className="w-full px-3.5 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
-
-                {/* Quick Topic Chips */}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {[
-                    'Data Structures & Algorithms',
-                    'Python Programming',
-                    'Java & Spring Boot',
-                    'SQL & Database Queries',
-                    'Quantitative Aptitude & Reasoning',
-                    'Web Development & Frontend',
-                    'Cloud & DevOps (AWS)',
-                    'Machine Learning & AI',
-                  ].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setAiTopic(preset)}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ${
-                        aiTopic === preset
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Inbuilt Set (1-5)
+                  </label>
+                  <select
+                    value={aiSetNumber}
+                    onChange={(e) => setAiSetNumber(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value={1}>Set 1 (15 Qs)</option>
+                    <option value={2}>Set 2 (15 Qs)</option>
+                    <option value={3}>Set 3 (15 Qs)</option>
+                    <option value={4}>Set 4 (15 Qs)</option>
+                    <option value={5}>Set 5 (15 Qs)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Question Count
@@ -923,10 +941,9 @@ export const AssessmentBuilderPage: React.FC = () => {
                     onChange={(e) => setAiCount(Number(e.target.value))}
                     className="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   >
-                    <option value={5}>5 Questions</option>
+                    <option value={15}>15 Questions (Full Set)</option>
                     <option value={10}>10 Questions</option>
-                    <option value={15}>15 Questions</option>
-                    <option value={20}>20 Questions</option>
+                    <option value={5}>5 Questions</option>
                   </select>
                 </div>
 
@@ -949,7 +966,7 @@ export const AssessmentBuilderPage: React.FC = () => {
               <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-start space-x-2.5">
                 <span className="text-sm">💡</span>
                 <p className="text-[11px] text-indigo-900 leading-relaxed font-medium">
-                  Questions are generated directly into this draft assessment. You can review, modify answers, or delete any question before clicking <strong className="text-indigo-950 font-bold">Publish Assessment</strong>.
+                  Generates 15 placement-ready MCQs directly from the selected inbuilt set with full options, answers, and solution explanations. You can review and edit every question before clicking <strong className="text-indigo-950 font-bold">Publish Assessment</strong>.
                 </p>
               </div>
 

@@ -37,6 +37,8 @@ export const OfficerAssessmentsPage: React.FC = () => {
   });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [autoPopulateSet, setAutoPopulateSet] = useState(true);
+  const [selectedSetNum, setSelectedSetNum] = useState(1);
 
   // Assign Modal
   const [assigningAssessment, setAssigningAssessment] = useState<AssessmentSummary | null>(null);
@@ -95,6 +97,19 @@ export const OfficerAssessmentsPage: React.FC = () => {
       };
 
       const created = await assessmentService.createAssessment(payload);
+      if (autoPopulateSet) {
+        const catName = selectedCategoryObj?.name || createForm.title || 'Technical Core';
+        try {
+          await assessmentService.generateQuestions(created.id, {
+            topic: catName,
+            set_number: selectedSetNum,
+            count: 15,
+            difficulty: createForm.difficulty,
+          });
+        } catch (genErr) {
+          console.warn('Could not auto-generate questions on creation:', genErr);
+        }
+      }
       setShowCreateModal(false);
       navigate(`/assessments/builder/${created.id}`);
     } catch (err: any) {
@@ -526,6 +541,42 @@ export const OfficerAssessmentsPage: React.FC = () => {
                 <label htmlFor="multi-attempts" className="text-xs font-semibold text-slate-700 cursor-pointer">
                   Allow students multiple attempts (Practice mode)
                 </label>
+              </div>
+
+              {/* Inbuilt 15 Questions Auto-populate */}
+              <div className="p-3.5 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 border border-indigo-100 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="auto-populate"
+                      checked={autoPopulateSet}
+                      onChange={(e) => setAutoPopulateSet(e.target.checked)}
+                      className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                    />
+                    <label htmlFor="auto-populate" className="text-xs font-bold text-slate-900 cursor-pointer flex items-center space-x-1">
+                      <span>✨ Auto-populate with 15 Inbuilt Questions</span>
+                    </label>
+                  </div>
+                  {autoPopulateSet && (
+                    <select
+                      value={selectedSetNum}
+                      onChange={(e) => setSelectedSetNum(Number(e.target.value))}
+                      className="text-xs font-bold bg-white border border-indigo-200 text-indigo-700 px-2.5 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                      <option value={1}>Set 1 (15 Qs)</option>
+                      <option value={2}>Set 2 (15 Qs)</option>
+                      <option value={3}>Set 3 (15 Qs)</option>
+                      <option value={4}>Set 4 (15 Qs)</option>
+                      <option value={5}>Set 5 (15 Qs)</option>
+                    </select>
+                  )}
+                </div>
+                {autoPopulateSet && (
+                  <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                    Pre-loads 15 verified recruitment questions from this category's inbuilt bank so you can immediately review and publish.
+                  </p>
+                )}
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">

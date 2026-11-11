@@ -2,9 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/assets/images/kare_logo.png" />
-    <link rel="shortcut icon" type="image/png" href="/assets/images/kare_logo.png" />
-    <link rel="apple-touch-icon" href="/assets/images/kare_logo.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="application-name" content="KARE" />
+    <meta name="apple-mobile-web-app-title" content="KARE" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Google & Bing Search Engine Optimization (SEO) Metadata -->
@@ -20,7 +24,7 @@
     <!-- Open Graph / Facebook / WhatsApp Rich Sharing -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://kare-placements.onrender.com" />
-    <meta property="og:site_name" content="KARE Placements (CampusFlow)" />
+    <meta property="og:site_name" content="KARE" />
     <meta property="og:title" content="KARE Placements | Kalasalingam Placement Portal" />
     <meta property="og:description" content="Official placement portal for Kalasalingam University (KARE). Student login for campus recruitment drives, AI mock interviews, and placement roadmaps." />
     <meta property="og:image" content="https://kare-placements.onrender.com/assets/images/kare_logo.png" />
@@ -32,26 +36,63 @@
     <meta name="twitter:description" content="Official placement portal for Kalasalingam University (KARE). Student login for campus recruitment drives, AI mock interviews, and placement roadmaps." />
     <meta name="twitter:image" content="https://kare-placements.onrender.com/assets/images/kare_logo.png" />
 
-    <!-- Google Schema.org JSON-LD Structured Data for Top Google Search Ranking -->
+    <!-- Google & Bing Site Name & Organization JSON-LD Structured Data -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "EducationalOrganization",
-        "name": "Kalasalingam Academy of Research and Education - Placements",
-        "alternateName": [
-          "KARE Placements",
-          "KLU Placements",
-          "KLU Placement Portal",
-          "CampusFlow KLU",
-          "SIS Login KLU Placements"
-        ],
-        "url": "https://kare-placements.onrender.com",
-        "logo": "https://kare-placements.onrender.com/assets/images/kare_logo.png",
-        "sameAs": [
-          "https://kalasalingam.ac.in",
-          "https://www.linkedin.com/school/kalasalingam-university/"
-        ],
-        "description": "Official Placement and Career Portal for Kalasalingam Academy of Research and Education. Student login for campus recruitment drives, AI voice mock interviews, and placement preparation roadmaps."
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://kare-placements.onrender.com/#website",
+            "url": "https://kare-placements.onrender.com",
+            "name": "KARE",
+            "alternateName": [
+              "KARE Placements",
+              "Kalasalingam University Placements",
+              "KLU Placements",
+              "CampusFlow KARE"
+            ],
+            "description": "Official Placement Portal for Kalasalingam Academy of Research and Education (KARE)",
+            "publisher": {
+              "@id": "https://kare-placements.onrender.com/#organization"
+            }
+          },
+          {
+            "@type": "EducationalOrganization",
+            "@id": "https://kare-placements.onrender.com/#organization",
+            "name": "KARE - Kalasalingam Academy of Research and Education",
+            "alternateName": ["KARE", "KLU", "Kalasalingam University"],
+            "url": "https://kare-placements.onrender.com",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://kare-placements.onrender.com/assets/images/kare_logo.png",
+              "width": "640",
+              "height": "640"
+            },
+            "sameAs": [
+              "https://kalasalingam.ac.in",
+              "https://www.linkedin.com/school/kalasalingam-university/"
+            ],
+            "description": "Official Placement and Career Portal for Kalasalingam Academy of Research and Education. Student login for campus recruitment drives, AI voice mock interviews, and placement preparation roadmaps."
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "KARE",
+                "item": "https://kare-placements.onrender.com"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Placements",
+                "item": "https://kare-placements.onrender.com/drives"
+              }
+            ]
+          }
+        ]
       }
     </script>
 
