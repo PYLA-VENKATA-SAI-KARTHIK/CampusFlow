@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -99,11 +99,12 @@ class StudentProfileRepository:
                 (StudentProfile.branch_code.ilike(search_term))
             )
 
+        subq = base_stmt.add_columns(User.is_active.label("user_is_active")).subquery()
         count_stmt = select(
             func.count().label("total"),
-            func.count(case((User.is_active == True, 1))).label("active"),
-            func.count(case((User.is_active == False, 1))).label("pending"),
-        ).select_from(base_stmt.subquery())
+            func.count(case((subq.c.user_is_active == True, 1))).label("active"),
+            func.count(case((subq.c.user_is_active == False, 1))).label("pending"),
+        ).select_from(subq)
         counts_row = (await self.session.execute(count_stmt)).mappings().first()
         total = counts_row["total"] if counts_row else 0
         active_count = counts_row["active"] if counts_row else 0

@@ -171,12 +171,7 @@ export const DashboardPage: React.FC = () => {
         {/* Top Technical Metadata */}
         <div className="relative z-10 flex items-center justify-between font-mono text-[11px] text-[#9b86d9] mb-3 select-none tracking-wider">
           <div className="flex items-center space-x-2">
-            <span className="font-bold">[SEC.01]</span>
-            <span className="text-slate-500">//</span>
             <span>OVERVIEW.SYS</span>
-          </div>
-          <div className="text-slate-400 font-mono text-[10px] tracking-widest uppercase">
-            X:0142 Y:0096
           </div>
         </div>
 

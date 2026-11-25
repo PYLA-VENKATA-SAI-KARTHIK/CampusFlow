@@ -109,11 +109,6 @@ export const LoginPage = () => {
               </p>
             </div>
           </div>
-
-          <div className="font-mono text-[10px] text-white/70 tracking-widest text-right">
-            <div>[SEC.03]</div>
-            <div>X:0142 Y:0096</div>
-          </div>
         </div>
 
         {/* BOTTOM: Campus Career Platform Headline */}
@@ -136,12 +131,6 @@ export const LoginPage = () => {
         <div className="w-full max-w-md mx-auto space-y-7 my-auto">
           {/* Header */}
           <div className="space-y-2.5">
-            <div className="flex items-center space-x-2 font-mono text-[11px] text-[#6d50b4] font-bold uppercase tracking-widest">
-              <span>[SEC.01]</span>
-              <span>//</span>
-              <span>KARE-PLACEMENTS PORTAL</span>
-            </div>
-
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 font-display tracking-tight">
               Sign In // <span className="text-[#9b86d9]">KARE-PLACEMENTS</span>
             </h1>
