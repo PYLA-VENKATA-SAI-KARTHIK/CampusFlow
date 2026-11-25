@@ -18,8 +18,7 @@ from fastapi import APIRouter, Depends, Query, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import UserContext, get_db, require_role
-from app.core.email import create_email_service
-from app.core.config import get_settings
+from app.core.email import get_email_service
 from app.schemas.admin import (
     AdminAuditLogListParams,
     AdminAuditLogResponse,
@@ -46,14 +45,7 @@ def _get_client_ip(request: Request) -> str | None:
 
 
 def _get_admin_service(session: AsyncSession) -> AdminService:
-    settings = get_settings()
-    email_service = create_email_service(
-        provider=settings.email_provider,
-        sendgrid_api_key=settings.sendgrid_api_key,
-        sendgrid_from_email=settings.sendgrid_from_email,
-        sendgrid_from_name=settings.sendgrid_from_name,
-    )
-    return AdminService(session=session, email_service=email_service)
+    return AdminService(session=session, email_service=get_email_service())
 
 
 # ---------------------------------------------------------------------------
