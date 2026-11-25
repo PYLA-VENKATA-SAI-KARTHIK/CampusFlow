@@ -350,30 +350,33 @@ export const AdminUsersPage: React.FC = () => {
         )}
 
         {/* Pagination Bar */}
-        {data && data.total_pages > 1 && (
-          <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
-            <div>
-              Showing <span className="font-bold">{data.items.length}</span> of{' '}
-              <span className="font-bold">{data.total}</span> users (Page {data.page} of {data.total_pages})
+        {data && Math.ceil(data.total / data.page_size) > 1 && (() => {
+          const totalPages = Math.ceil(data.total / data.page_size);
+          return (
+            <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+              <div>
+                Showing <span className="font-bold">{data.items.length}</span> of{' '}
+                <span className="font-bold">{data.total}</span> users (Page {data.page} of {totalPages})
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 border border-slate-300 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 transition font-semibold"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 border border-slate-300 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 transition font-semibold"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-slate-300 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 transition font-semibold"
-              >
-                Previous
-              </button>
-              <button
-                disabled={page >= data.total_pages}
-                onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
-                className="px-3 py-1.5 border border-slate-300 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 transition font-semibold"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Modals */}

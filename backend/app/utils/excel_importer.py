@@ -259,18 +259,25 @@ def normalize_backlogs(val: Any, default: int = 0) -> int:
 
 
 def normalize_phone_number(val: Any) -> str | None:
-    """Extract phone number preserving leading + if present, up to 15 chars."""
+    """Extract phone number preserving leading + if present, handling spaces and scientific notation."""
     if val is None:
         return None
     s = normalize_cell_as_string(val).strip()
     if not s or s.lower() in ("na", "n/a", "nil", "none", "null", "-"):
         return None
-    # If multiple phone numbers e.g. separated by slash or comma, take first
-    first_part = re.split(r"[/,;\s]+", s)[0].strip()
-    digits_only = re.sub(r"[^\d\+]", "", first_part)
-    if len(digits_only) < 7:
-        return None
-    return digits_only[:15]
+    # Handle scientific notation strings from Excel/CSV (e.g. "9.87654321E+09")
+    if re.match(r"^\d+(\.\d+)?[eE]\+?\d+$", s):
+        try:
+            from decimal import Decimal
+            s = str(int(Decimal(s)))
+        except Exception:
+            pass
+    # Only split on explicit multi-number delimiters (/, ;, ,), NOT whitespace (so "+91 98765 43210" stays intact)
+    for part in re.split(r"[/,;]+", s):
+        digits_only = re.sub(r"[^\d\+]", "", part.strip())
+        if len(digits_only) >= 7:
+            return digits_only[:15]
+    return None
 
 
 def normalize_personal_email(val: Any) -> str | None:
