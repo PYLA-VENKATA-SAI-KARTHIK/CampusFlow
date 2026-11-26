@@ -45,6 +45,14 @@ async def lifespan(app: FastAPI):
     
     # 3. DB Engine
     get_engine()
+
+    # 4. Ensure Preparation Hub roles, topics, and verified materials are seeded
+    if settings.app_env != "test":
+        try:
+            from scripts.seed_roadmaps_and_materials import seed as seed_prep_hub
+            await seed_prep_hub()
+        except Exception as exc:
+            logger.warning("Preparation Hub auto-seed skipped: %s", exc)
     
     yield
     

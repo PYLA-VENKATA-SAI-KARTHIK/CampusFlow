@@ -168,6 +168,10 @@ async def seed():
             ("TECHNICAL", "Python Core & Advanced", "python-programming", "Python data models, generators, OOP, memory management, and asynchronous patterns."),
             ("APTITUDE", "Quantitative Mathematics", "quant-math", "Arithmetic, Algebra, Percentages, Time & Work, and Probability problem sets."),
             ("APTITUDE", "Logical & Analytical Reasoning", "logical-reasoning", "Puzzles, Seating Arrangements, Coding-Decoding, and Syllogisms."),
+            ("VERBAL", "English Grammar & Reading Comprehension", "verbal-grammar-comprehension", "Sentence correction, error spotting, para-jumbles, and reading comprehension passages."),
+            ("VERBAL", "Vocabulary, Idioms & Professional Communication", "verbal-vocabulary-communication", "Synonyms, antonyms, contextual vocabulary, and corporate communication."),
+            ("TECHNICAL", "Machine Learning & Deep Neural Networks", "ml-deep-learning", "Supervised/unsupervised learning, PyTorch, Scikit-Learn, model evaluation, and MLOps."),
+            ("TECHNICAL", "Automated Testing & Quality Assurance", "qa-test-automation", "End-to-end testing with Playwright, Pytest, API contract testing, and Locust load testing."),
             ("INTERVIEW", "Behavioral & STAR Method Interview Rounds", "behavioral-hr", "STAR framework, situational judgment, resolving technical conflict, and leadership ethics."),
         ]
 
@@ -255,6 +259,7 @@ async def seed():
             ("FULLSTACK_DEVELOPER", "behavioral-hr", "ELECTIVE"),
 
             # 7. AI & Machine Learning Engineer
+            ("AI_ML_ENGINEER", "ml-deep-learning", "CORE"),
             ("AI_ML_ENGINEER", "python-programming", "CORE"),
             ("AI_ML_ENGINEER", "dsa", "CORE"),
             ("AI_ML_ENGINEER", "quant-math", "CORE"),
@@ -264,6 +269,7 @@ async def seed():
             ("AI_ML_ENGINEER", "behavioral-hr", "ELECTIVE"),
 
             # 8. QA & Automation Test Engineer
+            ("QA_TEST_ENGINEER", "qa-test-automation", "CORE"),
             ("QA_TEST_ENGINEER", "python-programming", "CORE"),
             ("QA_TEST_ENGINEER", "dsa", "CORE"),
             ("QA_TEST_ENGINEER", "web-development", "CORE"),
@@ -473,16 +479,76 @@ async def seed():
                 "Official React deep dive: Component lifecycle, reconciliation, virtual DOM, custom hooks, and state management patterns."
             ),
 
-            # Aptitude & Behavioral Materials
+            # Aptitude, Verbal & Behavioral Materials
             (
                 "quant-math",
                 None,
                 "Quantitative Aptitude Formulas & Short-Tricks Cheatsheet",
                 "https://www.geeksforgeeks.org/quantitative-aptitude-for-placements/",
-                "PDF",
+                "ARTICLE",
                 "BEGINNER",
                 "GeeksforGeeks",
                 "High-speed shortcuts for Speed Math, Percentages, Ratio-Proportion, Profit-Loss, Time-Speed-Distance, and Permutations."
+            ),
+            (
+                "quant-math",
+                None,
+                "IndiaBIX Quantitative Aptitude Practice Bank",
+                "https://www.indiabix.com/aptitude/questions-and-answers/",
+                "ARTICLE",
+                "BEGINNER",
+                "IndiaBIX",
+                "Topic-wise solved quantitative aptitude problems with step-by-step explanations for campus placement tests."
+            ),
+            (
+                "logical-reasoning",
+                None,
+                "Logical & Analytical Reasoning Practice Sets",
+                "https://www.indiabix.com/logical-reasoning/questions-and-answers/",
+                "ARTICLE",
+                "BEGINNER",
+                "IndiaBIX",
+                "Practice problems on seating arrangements, blood relations, syllogisms, number series, and data sufficiency."
+            ),
+            (
+                "logical-reasoning",
+                None,
+                "Top Interview Puzzles & Analytical Brainteasers",
+                "https://www.geeksforgeeks.org/puzzles/",
+                "ARTICLE",
+                "INTERMEDIATE",
+                "GeeksforGeeks",
+                "Classic technical interview puzzles and logical deduction problems frequently asked in SDE and analyst rounds."
+            ),
+            (
+                "verbal-grammar-comprehension",
+                None,
+                "Purdue OWL Grammar, Punctuation & Academic Writing Guide",
+                "https://owl.purdue.edu/owl/general_writing/grammar/index.html",
+                "DOCUMENTATION",
+                "BEGINNER",
+                "Purdue OWL",
+                "Authoritative reference covering subject-verb agreement, modifiers, sentence structure, and error correction."
+            ),
+            (
+                "verbal-grammar-comprehension",
+                None,
+                "Verbal Ability & Reading Comprehension Practice",
+                "https://www.indiabix.com/verbal-ability/questions-and-answers/",
+                "ARTICLE",
+                "BEGINNER",
+                "IndiaBIX",
+                "Practice sets for spotting errors, sentence improvement, para-jumbles, and passage comprehension."
+            ),
+            (
+                "verbal-vocabulary-communication",
+                None,
+                "Cambridge English Grammar & Vocabulary Reference",
+                "https://dictionary.cambridge.org/grammar/british-grammar/",
+                "DOCUMENTATION",
+                "BEGINNER",
+                "Cambridge Dictionary",
+                "Comprehensive usage guide for idioms, prepositions, collocations, and formal corporate English."
             ),
             (
                 "behavioral-hr",
@@ -493,6 +559,178 @@ async def seed():
                 "BEGINNER",
                 "Harvard Business Review",
                 "Framework for answering 'Tell me about a time when...', handling conflicts with teammates, managing tight deadlines, and discussing failures."
+            ),
+            (
+                "behavioral-hr",
+                None,
+                "Tech Interview Handbook: Behavioral & Resume Guide",
+                "https://www.techinterviewhandbook.org/behavioral-interview/",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "Tech Interview Handbook",
+                "Curated behavioral question bank, STAR storytelling templates, and engineering leadership rubrics."
+            ),
+
+            # Additional Role-Specific Verified Resources
+            (
+                "dsa",
+                "SOFTWARE_DEVELOPER",
+                "Striver's A2Z DSA Sheet & Problem Roadmap",
+                "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
+                "ARTICLE",
+                "INTERMEDIATE",
+                "takeUforward",
+                "Structured 450+ problem DSA curriculum covering arrays, trees, graphs, recursion, and dynamic programming."
+            ),
+            (
+                "concurrency-multithreading",
+                "SOFTWARE_DEVELOPER",
+                "Operating Systems & Concurrency Interview Guide",
+                "https://www.geeksforgeeks.org/operating-systems/",
+                "ARTICLE",
+                "INTERMEDIATE",
+                "GeeksforGeeks",
+                "Core OS concepts: process scheduling, deadlocks, semaphores, virtual memory, paging, and thread synchronization."
+            ),
+            (
+                "ml-deep-learning",
+                "AI_ML_ENGINEER",
+                "PyTorch Official Deep Learning & Neural Network Tutorials",
+                "https://pytorch.org/tutorials/",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "PyTorch",
+                "Hands-on official tutorials for tensors, autograd, CNNs, transformers, and distributed model training."
+            ),
+            (
+                "ml-deep-learning",
+                "AI_ML_ENGINEER",
+                "Scikit-Learn Supervised & Unsupervised Learning User Guide",
+                "https://scikit-learn.org/stable/user_guide.html",
+                "DOCUMENTATION",
+                "BEGINNER",
+                "Scikit-Learn",
+                "Complete reference for regression, classification, random forests, SVMs, cross-validation, and feature pipelines."
+            ),
+            (
+                "ml-deep-learning",
+                "AI_ML_ENGINEER",
+                "Google Machine Learning Crash Course",
+                "https://developers.google.com/machine-learning/crash-course",
+                "VIDEO",
+                "BEGINNER",
+                "Google Developers",
+                "Interactive ML fundamentals covering gradient descent, loss functions, regularization, and fairness."
+            ),
+            (
+                "rag-architectures",
+                "GENAI_ENGINEER",
+                "Hugging Face LLM & Transformer Engineering Course",
+                "https://huggingface.co/learn/nlp-course/chapter1/1",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "Hugging Face",
+                "Deep dive into transformer architectures, tokenizers, fine-tuning, and embedding models."
+            ),
+            (
+                "rag-architectures",
+                "GENAI_ENGINEER",
+                "Anthropic Prompt Engineering & Agentic Patterns Guide",
+                "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "Anthropic",
+                "Production techniques for structured outputs, chain-of-thought reasoning, tool use, and RAG grounding."
+            ),
+            (
+                "docker-kubernetes",
+                "DEVOPS_ENGINEER",
+                "Docker Official Get Started & Multi-Stage Container Guide",
+                "https://docs.docker.com/get-started/",
+                "DOCUMENTATION",
+                "BEGINNER",
+                "Docker",
+                "Containerization fundamentals, Dockerfile best practices, Docker Compose, and image layer optimization."
+            ),
+            (
+                "docker-kubernetes",
+                "DEVOPS_ENGINEER",
+                "HashiCorp Terraform Infrastructure as Code Tutorials",
+                "https://developer.hashicorp.com/terraform/tutorials",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "HashiCorp",
+                "Declarative cloud provisioning, state management, modules, and automated CI/CD infrastructure workflows."
+            ),
+            (
+                "sql-dbms",
+                "DATA_ENGINEER",
+                "PostgreSQL Official Performance & Query Optimization Docs",
+                "https://www.postgresql.org/docs/current/performance-tips.html",
+                "DOCUMENTATION",
+                "ADVANCED",
+                "PostgreSQL",
+                "Using EXPLAIN ANALYZE, B-Tree/GIN indexing, partitioning, and vacuuming for analytical workloads."
+            ),
+            (
+                "web-development",
+                "FULLSTACK_DEVELOPER",
+                "TypeScript Official Handbook for Production Web Apps",
+                "https://www.typescriptlang.org/docs/handbook/intro.html",
+                "DOCUMENTATION",
+                "BEGINNER",
+                "TypeScript",
+                "Static typing, generics, utility types, discriminated unions, and strict type-safe frontend architecture."
+            ),
+            (
+                "web-development",
+                "FULLSTACK_DEVELOPER",
+                "FastAPI Official User Guide & Async REST APIs",
+                "https://fastapi.tiangolo.com/tutorial/",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "FastAPI",
+                "Building high-concurrency Python APIs with Pydantic validation, dependency injection, and OAuth2/JWT."
+            ),
+            (
+                "web-development",
+                "FULLSTACK_DEVELOPER",
+                "MDN Web Docs: HTTP Security, CORS & Web Storage",
+                "https://developer.mozilla.org/en-US/docs/Web/HTTP",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "Mozilla MDN",
+                "Authoritative web standards covering HTTP methods, status codes, CORS, CSP headers, and browser APIs."
+            ),
+            (
+                "qa-test-automation",
+                "QA_TEST_ENGINEER",
+                "Playwright Official End-to-End Browser Testing Docs",
+                "https://playwright.dev/docs/intro",
+                "DOCUMENTATION",
+                "BEGINNER",
+                "Microsoft Playwright",
+                "Cross-browser E2E automation, auto-waiting locators, network mocking, and trace debugging."
+            ),
+            (
+                "qa-test-automation",
+                "QA_TEST_ENGINEER",
+                "Pytest Official Documentation & Async Fixture Patterns",
+                "https://docs.pytest.org/en/stable/",
+                "DOCUMENTATION",
+                "BEGINNER",
+                "Pytest",
+                "Writing modular unit and integration tests with fixtures, parametrization, and coverage reporting."
+            ),
+            (
+                "qa-test-automation",
+                "QA_TEST_ENGINEER",
+                "Locust Distributed Load & Performance Testing Guide",
+                "https://docs.locust.io/en/stable/",
+                "DOCUMENTATION",
+                "INTERMEDIATE",
+                "Locust",
+                "Simulating concurrent user swarms in Python to benchmark API latency percentiles and error rates."
             ),
         ]
 
