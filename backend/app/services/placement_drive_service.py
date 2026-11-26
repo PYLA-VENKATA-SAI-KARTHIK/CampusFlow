@@ -360,7 +360,7 @@ class PlacementDriveService:
         drive = await self.get_drive(drive_id)
         criteria = drive.eligibility_criteria.criteria if drive.eligibility_criteria else {}
         
-        all_profiles, _ = await self.student_repo.list_students(skip=0, limit=100000)
+        all_profiles, _, _, _ = await self.student_repo.list_students(skip=0, limit=100000)
         
         eligible_profiles = []
         for profile in all_profiles:
